@@ -1,5 +1,9 @@
 # Lumo (Netlify + Puter.js + Netlify Identity)
 
+## Pages
+- `/` landing page · `/login` log in / sign up / forgot / reset · `/app` the chat app (redirects to `/login` when signed out) · `404.html`
+- `/api/health` shows whether Identity and the database are reachable (no secrets). Open it first if login or sign-up fails.
+
 ## Architecture
 - **AI**: Puter.js only, in the browser. Models: `openai/gpt-6-luna`, `openai/gpt-6-luna-pro` (`puter.ai.chat`, streaming, image input), `openai/dall-e-3` (`puter.ai.txt2img`). Users sign in to Puter and pay from their own credits. No AI keys anywhere. No model is ever substituted: failures show an error + Retry.
 - **Auth**: Netlify Identity via `@netlify/identity` (server-side `signup/login/logout/getUser`, `requestPasswordRecovery`, `recoverPassword`). Identity sends the reset email itself.
@@ -15,6 +19,12 @@
 3. Data & Storage > **Database**: create the database (Netlify Database is documented as available on credit-based plans only).
 4. Deploy, open the site, sign up, then press Send (Puter sign-in popup appears).
 5. After first `npm install`, commit the lockfile so `latest` dependencies are pinned.
+
+## Troubleshooting sign-up / login
+- Login page shows a yellow **Setup needed** banner: Identity is not enabled (or the database is unreachable). Fix it in Netlify, redeploy, reload.
+- "Sign-ups are closed": set Identity registration to **Open**.
+- "Please confirm your email": turn on **autoconfirm**, or click the link in the confirmation email.
+- Real Identity errors are logged in Netlify Functions logs (`identity signup failed ...`, `identity login failed ...`).
 
 ## Known limits
 PDF/Word upload unsupported. Uploaded images are analysed in-session; only filenames sync across devices. Identity does not work under `netlify dev` (test on a deploy). Not end-to-end tested.

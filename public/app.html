@@ -1,0 +1,153 @@
+<!doctype html>
+<html lang="en" data-theme="dark"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Lumo</title>
+<link rel="icon" type="image/svg+xml" href="/logo.svg">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github-dark.min.css">
+<style>
+:root{--bg:#0b0d12;--sb:#10131a;--fg:#e8eaf0;--mut:#8a90a2;--bd:#222735;--card:#161a23;--ac:#7c8cff;--ac2:#b06cff;--r:14px;font-family:Inter,system-ui,sans-serif}
+[data-theme=light]{--bg:#fff;--sb:#f6f7fb;--fg:#14161c;--mut:#6a7081;--bd:#e3e6ef;--card:#f1f3f9}
+*{box-sizing:border-box}html,body{height:100%;margin:0}body{background:var(--bg);color:var(--fg);display:flex;overflow:hidden}
+button,input,select,textarea{font:inherit;color:inherit}button{cursor:pointer;background:var(--card);border:1px solid var(--bd);border-radius:10px;padding:7px 11px;transition:.15s}button:hover{border-color:var(--ac)}
+input,select,textarea{background:var(--card);border:1px solid var(--bd);border-radius:10px;padding:9px 11px;outline:none;width:100%}input:focus,textarea:focus{border-color:var(--ac)}
+.pri{background:linear-gradient(135deg,var(--ac),var(--ac2));border:0;color:#fff}
+#sb{width:290px;background:var(--sb);border-right:1px solid var(--bd);display:flex;flex-direction:column;padding:12px;gap:10px;transition:transform .25s;z-index:5}
+#list{flex:1;overflow:auto;display:flex;flex-direction:column;gap:2px}
+.ci{display:flex;align-items:center;gap:4px;padding:8px 10px;border-radius:10px;cursor:pointer}.ci:hover,.ci.on{background:var(--card)}.ci span{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:14px}
+.ci button{display:none;padding:2px 6px;border:0;background:none}.ci:hover button{display:inline}
+main{flex:1;display:flex;flex-direction:column;min-width:0}
+#top{display:flex;align-items:center;gap:10px;padding:10px 16px;border-bottom:1px solid var(--bd)}#top select{width:auto}#menu{display:none}
+#msgs{flex:1;overflow:auto;padding:24px 16px}.w{max-width:780px;margin:0 auto}
+.m{margin:0 0 22px;animation:in .25s}@keyframes in{from{opacity:0;transform:translateY(6px)}}
+.m.user .b{background:var(--card);border-radius:var(--r);padding:10px 14px;margin-left:auto;width:fit-content;max-width:85%;white-space:pre-wrap}
+.m .b{line-height:1.65;overflow-wrap:anywhere}.m .b img{max-width:100%;border-radius:var(--r)}
+.act{display:flex;gap:6px;margin-top:6px;opacity:.6}.act button{padding:2px 8px;font-size:12px}
+.m.user .act{justify-content:flex-end}
+pre{position:relative;background:#0d1117;border-radius:12px;padding:0;overflow:auto}pre code{padding:14px!important;display:block}pre .cp{position:absolute;top:6px;right:6px;font-size:11px;padding:2px 8px}
+code:not(pre code){background:var(--card);padding:1px 5px;border-radius:5px}table{border-collapse:collapse}td,th{border:1px solid var(--bd);padding:4px 8px}
+.err{color:#ff6b6b;border:1px solid #ff6b6b55;border-radius:var(--r);padding:10px}
+#comp{padding:12px 16px 18px}.box{max-width:780px;margin:0 auto;background:var(--card);border:1px solid var(--bd);border-radius:20px;padding:10px;display:flex;flex-direction:column;gap:8px}
+.box textarea{border:0;background:none;resize:none;max-height:200px;padding:6px}.row{display:flex;gap:8px;align-items:center}.row .sp{flex:1}
+#chips{display:flex;gap:6px;flex-wrap:wrap}.chip{font-size:12px;background:var(--bg);border:1px solid var(--bd);border-radius:20px;padding:2px 10px}
+.on2{background:linear-gradient(135deg,var(--ac),var(--ac2));color:#fff;border:0}
+dialog{background:var(--sb);color:var(--fg);border:1px solid var(--bd);border-radius:18px;width:min(560px,94vw);padding:20px}dialog::backdrop{background:#0008}
+dialog h3{margin:14px 0 6px}.mem{display:flex;gap:8px;align-items:center;padding:6px 0;border-bottom:1px solid var(--bd)}.mem span{flex:1;font-size:14px}
+#toast{position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:var(--card);border:1px solid var(--bd);padding:10px 16px;border-radius:12px;display:none;z-index:30;max-width:90vw}
+@media(max-width:760px){#sb{position:fixed;inset:0 auto 0 0;transform:translateX(-100%)}#sb.open{transform:none}#menu{display:inline-block}}
+</style></head><body>
+<aside id="sb"><div style="display:flex;align-items:center;gap:10px;padding:2px 4px"><img src="/logo.svg" width="30" height="30" alt=""><b style="font-size:18px;letter-spacing:.3px">Lumo</b></div><button class="pri" id="nc">+ New chat</button><input id="q" placeholder="Search chats"><div id="list"></div>
+<div class="row"><button id="mem" class="sp">Settings &amp; memory</button></div></aside>
+<main><div id="top"><button id="menu">☰</button><select id="model" style="max-width:220px"><option value="luna">GPT-6 Luna</option><option value="pro">GPT-6 Luna Pro</option><option value="dalle">DALL·E 3 (images)</option></select><span class="sp" style="flex:1"></span><a href="/" style="color:var(--mut);font-size:13px;text-decoration:none">Home</a><span id="who" style="color:var(--mut);font-size:13px"></span></div>
+<div id="msgs"><div class="w" id="mw"></div></div>
+<div id="comp"><div class="box"><div id="chips"></div><textarea id="in" rows="1" placeholder="Message Lumo…"></textarea>
+<div class="row"><input type="file" id="file" hidden multiple><button id="att" title="Attach images or text/code files">📎</button><button id="img" title="Generate an image with DALL·E 3">🖼 Image</button><span class="sp"></span><button class="pri" id="go">Send</button></div></div></div></main>
+<dialog id="dlg"><h2 style="margin:0">Settings</h2><h3>Theme</h3><select id="th"><option value="dark">Dark</option><option value="light">Light</option></select>
+<h3>Personalization</h3><textarea id="ins" rows="3" placeholder="Custom instructions (how should Lumo respond?)"></textarea>
+<label style="display:flex;gap:8px;margin-top:8px"><input type="checkbox" id="am2" style="width:auto"> Auto-save memories (uses a small extra model call from your Puter credits)</label>
+<h3>Memories</h3><div id="ml"></div><div class="row" style="margin-top:8px"><input id="mn" placeholder="Add a memory"><button id="ma">Add</button></div>
+<h3>Account</h3><div id="acct" style="color:var(--mut);font-size:14px">Loading…</div><div class="row" style="margin-top:8px"><button id="ex" class="sp">Export my data</button><button id="dd" class="sp">Delete my chats &amp; memories</button></div>
+<div class="row" style="margin-top:14px"><button id="mc">Delete all memories</button><button id="ps">Puter account</button><span class="sp"></span><button id="lo">Log out</button><button class="pri" id="sv">Save</button></div></dialog>
+<div id="toast"></div>
+<script src="https://js.puter.com/v2/"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/marked/12.0.2/marked.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/dompurify/3.1.6/purify.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
+<script>
+const $=s=>document.querySelector(s);
+const MODELS={luna:{id:'openai/gpt-6-luna',name:'GPT-6 Luna'},pro:{id:'openai/gpt-6-luna-pro',name:'GPT-6 Luna Pro'},dalle:{id:'openai/dall-e-3',name:'DALL·E 3',img:true}};
+const S={user:null,convs:[],cur:null,msgs:[],mem:[],files:[],busy:false,stop:false,model:'luna',mode:'login',prev:'luna'};
+async function api(p,m='GET',b){const r=await fetch('/api/'+p,{method:m,headers:{'content-type':'application/json','x-requested-with':'app'},body:b?JSON.stringify(b):undefined});const j=await r.json().catch(()=>({}));if(r.status===401&&!p.startsWith('auth/')){location.replace('/login');throw new Error('Signed out')}if(!r.ok)throw new Error(j.error||('HTTP '+r.status));return j}
+function toast(t){const e=$('#toast');e.textContent=t;e.style.display='block';clearTimeout(toast.t);toast.t=setTimeout(()=>e.style.display='none',4500)}
+const errText=e=>e?.error?.message||e?.message||(typeof e==='string'?e:JSON.stringify(e));
+function theme(t){document.documentElement.dataset.theme=t;localStorage.setItem('theme',t)}
+theme(localStorage.getItem('theme')||'dark');
+
+// ---- session
+$('#lo').onclick=async()=>{try{await api('auth/logout','POST',{})}catch{}location.replace('/login')};
+async function boot(u){S.user=u;$('#who').textContent=u.email;const s=u.settings||{};if(s.theme)theme(s.theme);S.model=s.model||'luna';$('#model').value=S.model;$('#img').classList.toggle('on2',S.model==='dalle');await Promise.all([loadList(),loadMem()])}
+(async()=>{try{const{user}=await api('auth/me');if(!user){location.replace('/login');return}await boot(user)}catch(e){if(e.message!=='Signed out')toast(e.message)}})();
+
+// ---- conversations
+async function loadList(){const{conversations}=await api('conversations?q='+encodeURIComponent($('#q').value));S.convs=conversations;const l=$('#list');l.innerHTML='';
+ for(const c of conversations){const d=document.createElement('div');d.className='ci'+(c.id===S.cur?' on':'');d.innerHTML='<span></span><button title="Pin">'+(c.pinned?'📌':'📍')+'</button><button title="Rename">✎</button><button title="Delete">🗑</button>';d.firstChild.textContent=c.title;
+  const[b1,b2,b3]=d.querySelectorAll('button');d.onclick=()=>openConv(c.id);
+  b1.onclick=async e=>{e.stopPropagation();await api('conversations/'+c.id,'PATCH',{pinned:!c.pinned});loadList()};
+  b2.onclick=async e=>{e.stopPropagation();const t=prompt('Rename chat',c.title);if(t){await api('conversations/'+c.id,'PATCH',{title:t});loadList()}};
+  b3.onclick=async e=>{e.stopPropagation();if(confirm('Delete this chat?')){await api('conversations/'+c.id,'DELETE');if(S.cur===c.id)newChat();loadList()}};l.append(d)}}
+$('#q').oninput=()=>{clearTimeout($('#q').t);$('#q').t=setTimeout(loadList,250)};
+async function openConv(id){if(S.busy)return;S.cur=id;const{messages}=await api('conversations/'+id);S.msgs=messages;render();loadList();$('#sb').classList.remove('open')}
+function newChat(){if(S.busy)return;S.cur=null;S.msgs=[];render();loadList();$('#sb').classList.remove('open')}
+$('#nc').onclick=newChat;$('#menu').onclick=()=>$('#sb').classList.toggle('open');
+window.addEventListener('focus',()=>{if(S.user&&!S.busy){loadList();if(S.cur)api('conversations/'+S.cur).then(r=>{if(r.messages.length!==S.msgs.length&&!S.busy){S.msgs=r.messages;render()}}).catch(()=>{})}});
+
+// ---- rendering
+function md(t){const h=DOMPurify.sanitize(marked.parse(t||''));const d=document.createElement('div');d.innerHTML=h;d.querySelectorAll('pre').forEach(p=>{const c=p.querySelector('code');if(c)hljs.highlightElement(c);const b=document.createElement('button');b.className='cp';b.textContent='Copy';b.onclick=()=>{navigator.clipboard.writeText(p.innerText.replace(/Copy$/,'').trim());b.textContent='Copied';setTimeout(()=>b.textContent='Copy',1200)};p.append(b)});return d}
+function bubble(m,i){const d=document.createElement('div');d.className='m '+m.role;const b=document.createElement('div');b.className='b';
+ if(m.role==='user'){b.textContent=m.content;(m.attachments||[]).forEach(a=>{const c=document.createElement('div');c.className='chip';c.textContent='📎 '+a.name;b.append(c)})}
+ else{b.append(md(m.content));(m.attachments||[]).filter(a=>a.dataUrl).forEach(a=>{const im=new Image();im.src=a.dataUrl;b.append(im)})}
+ d.append(b);if(m.id){const a=document.createElement('div');a.className='act';
+  const cp=document.createElement('button');cp.textContent='Copy';cp.onclick=()=>navigator.clipboard.writeText(m.content);a.append(cp);
+  if(m.role==='user'){const e=document.createElement('button');e.textContent='Edit';e.onclick=()=>editMsg(i);a.append(e)}
+  else if(i===S.msgs.length-1){const r=document.createElement('button');r.textContent='Regenerate';r.onclick=()=>regen();a.append(r)}
+  d.append(a)}return d}
+function render(){const w=$('#mw');w.innerHTML='';if(!S.msgs.length)w.innerHTML='<div style="text-align:center;margin-top:16vh"><img src="/logo.svg" width="64" height="64" alt=""><h1 style="font-size:34px">What can I help with?</h1><p style="color:var(--mut)">Pick a model above. Image uploads, text files and DALL·E 3 generation are supported.</p></div>';S.msgs.forEach((m,i)=>w.append(bubble(m,i)));$('#msgs').scrollTop=1e9}
+function chips(){const c=$('#chips');c.innerHTML='';S.files.forEach((f,i)=>{const e=document.createElement('span');e.className='chip';e.textContent=f.name+' ✕';e.style.cursor='pointer';e.onclick=()=>{S.files.splice(i,1);chips()};c.append(e)})}
+
+// ---- composer
+$('#model').onchange=e=>{S.model=e.target.value;$('#img').classList.toggle('on2',S.model==='dalle');api('settings','PUT',{model:S.model}).catch(()=>{})};
+$('#img').onclick=()=>{if(S.model==='dalle'){S.model=S.prev;}else{S.prev=S.model;S.model='dalle'}$('#model').value=S.model;$('#img').classList.toggle('on2',S.model==='dalle')};
+$('#att').onclick=()=>$('#file').click();
+$('#file').onchange=async e=>{for(const f of e.target.files){try{
+ if(f.type.startsWith('image/')){if(f.size>8e6)throw Error('Image over 8 MB');S.files.push({name:f.name,type:f.type,size:f.size,dataUrl:await new Promise(r=>{const x=new FileReader;x.onload=()=>r(x.result);x.readAsDataURL(f)})})}
+ else if(f.type.startsWith('text/')||/\.(txt|md|csv|json|js|ts|py|java|c|cpp|html|css|xml|yml|yaml|sql|sh|log)$/i.test(f.name)){S.files.push({name:f.name,type:f.type||'text/plain',size:f.size,text:(await f.text()).slice(0,60000)})}
+ else throw Error(f.name+': only images and text/code files are supported (PDF/Word are not wired up)')}catch(x){toast(x.message)}}e.target.value='';chips()};
+$('#in').oninput=e=>{e.target.style.height='auto';e.target.style.height=e.target.scrollHeight+'px'};
+$('#in').onkeydown=e=>{if(e.key==='Enter'&&!e.shiftKey&&innerWidth>760){e.preventDefault();$('#go').click()}};
+$('#go').onclick=()=>{if(S.busy){S.stop=true;return}const t=$('#in').value.trim();if(!t&&!S.files.length)return;const f=S.files;S.files=[];chips();$('#in').value='';$('#in').style.height='auto';send(t,f)};
+function busy(b){S.busy=b;$('#go').textContent=b?'Stop':'Send'}
+async function ensurePuter(){if(!puter.auth.isSignedIn())await puter.auth.signIn()}
+async function toDataUrl(src){if(src.startsWith('data:'))return src;const b=await (await fetch(src)).blob();return new Promise(r=>{const x=new FileReader;x.onload=()=>r(x.result);x.readAsDataURL(b)})}
+
+async function send(text,files){
+ try{await ensurePuter()}catch(e){return toast('Puter sign-in is required to use AI models.')}
+ try{
+  if(!S.cur){const{conversation}=await api('conversations','POST',{model:S.model,title:(text||files[0].name).slice(0,40)});S.cur=conversation.id}
+  const att=files.map(({dataUrl,...r})=>({...r}));
+  const{message}=await api(`conversations/${S.cur}/messages`,'POST',{role:'user',content:text,attachments:att});
+  message.attachments=att;message._imgs=files.filter(f=>f.dataUrl).map(f=>f.dataUrl);S.msgs.push(message);render();loadList();
+ }catch(e){return toast(e.message)}
+ await gen()}
+async function gen(){
+ busy(true);S.stop=false;const M=MODELS[S.model],w=$('#mw'),d=document.createElement('div');d.className='m assistant';d.innerHTML='<div class="b" style="color:var(--mut)">Thinking…</div>';w.append(d);$('#msgs').scrollTop=1e9;
+ const last=S.msgs[S.msgs.length-1];let acc='',atts=[];
+ try{
+  if(M.img){const im=await puter.ai.txt2img(last.content,{model:M.id});const u=await toDataUrl(im.src);acc='Generated with DALL·E 3.';atts=[{name:'image.png',type:'image/png',size:u.length,gen:true,dataUrl:u}]}
+  else{
+   const mems=S.mem.map(m=>'- '+m.text).join('\n'),ins=S.user.settings?.instructions||'';
+   const sys=[ins&&'User instructions:\n'+ins,mems&&'Known facts about the user (use only when relevant):\n'+mems].filter(Boolean).join('\n\n');
+   const full=m=>m.content+(m.attachments||[]).filter(a=>a.text).map(a=>`\n\n[File: ${a.name}]\n${a.text}`).join('')+(m.role==='user'?(m.attachments||[]).filter(a=>a.type?.startsWith('image/')&&!m._imgs).map(a=>`\n[Image "${a.name}" was attached earlier and is not available]`).join(''):'');
+   const hist=S.msgs.map(m=>({role:m.role,content:full(m)}));const imgs=last._imgs||[];let r;
+   if(imgs.length){const tr=hist.slice(0,-1).map(m=>m.role+': '+m.content).join('\n\n');r=await puter.ai.chat((sys?sys+'\n\n':'')+(tr?'Conversation so far:\n'+tr+'\n\n':'')+'user: '+hist[hist.length-1].content,imgs,{model:M.id,stream:true})}
+   else r=await puter.ai.chat([...(sys?[{role:'system',content:sys}]:[]),...hist],{model:M.id,stream:true});
+   if(r&&r[Symbol.asyncIterator]){for await(const p of r){if(S.stop)break;acc+=p?.text||'';d.firstChild.replaceChildren(md(acc));$('#msgs').scrollTop=1e9}}
+   else acc=r?.message?.content?.toString?.()||String(r);
+  }
+  if(!acc&&!atts.length)throw Error('The model returned an empty response.');
+  const{message}=await api(`conversations/${S.cur}/messages`,'POST',{role:'assistant',content:acc,model:S.model,attachments:atts});S.msgs.push(message);
+  if(!M.img&&S.user.settings?.autoMemory)extractMem(last.content,acc);
+ }catch(e){const t=errText(e);d.innerHTML='';const x=document.createElement('div');x.className='err';x.textContent='Request failed: '+t+(/fund|credit|balance|usage|limit|quota/i.test(t)?' — this may be a Puter credit/usage limit on your Puter account.':'')+' (No other model was substituted.)';const rb=document.createElement('button');rb.textContent='Retry';rb.onclick=()=>{d.remove();gen()};x.append(document.createElement('br'),rb);d.append(x);busy(false);return}
+ busy(false);render();loadList()}
+async function regen(){if(S.busy)return;const l=S.msgs[S.msgs.length-1];if(l?.role!=='assistant')return;await api(`conversations/${S.cur}/messages?from=${l.id}`,'DELETE');S.msgs.pop();render();try{await ensurePuter()}catch{return toast('Puter sign-in required')}gen()}
+async function editMsg(i){if(S.busy)return;const m=S.msgs[i],t=prompt('Edit message',m.content);if(!t||t===m.content)return;await api(`conversations/${S.cur}/messages?from=${m.id}`,'DELETE');const keep=(m.attachments||[]).filter(a=>a.text);S.msgs.length=i;render();send(t,keep)}
+async function extractMem(u,a){try{const r=await puter.ai.chat(`From this exchange extract up to 3 durable, non-sensitive facts or preferences the USER stated about themselves. Reply ONLY with a JSON array of short strings, or [] if none.\n\nUser: ${u.slice(0,2000)}\nAssistant: ${a.slice(0,1000)}`,{model:MODELS.luna.id});const t=(r?.message?.content?.toString?.()||'').replace(/```json|```/g,'').trim();const arr=JSON.parse(t);if(Array.isArray(arr))for(const x of arr.slice(0,3))if(typeof x==='string'&&x.trim())await api('memories','POST',{text:x});loadMem()}catch{}}
+
+// ---- settings & memory
+async function loadMem(){const{memories}=await api('memories');S.mem=memories;const l=$('#ml');l.innerHTML=memories.length?'':'<span style="color:var(--mut)">No memories yet.</span>';memories.forEach(m=>{const d=document.createElement('div');d.className='mem';d.innerHTML='<span></span><button>Delete</button>';d.firstChild.textContent=m.text;d.lastChild.onclick=async()=>{await api('memories/'+m.id,'DELETE');loadMem()};l.append(d)})}
+async function loadStats(){try{const{stats:t}=await api('stats');$('#acct').textContent=S.user.email+' · '+t.chats+' chats · '+t.messages+' messages · '+t.memories+' memories'}catch{$('#acct').textContent=S.user.email}}
+$('#ex').onclick=async()=>{try{const r=await fetch('/api/export',{headers:{'x-requested-with':'app'}});if(!r.ok)throw Error('Export failed');const u=URL.createObjectURL(await r.blob()),a=document.createElement('a');a.href=u;a.download='lumo-export.json';a.click();URL.revokeObjectURL(u)}catch(e){toast(e.message)}};
+$('#dd').onclick=async()=>{if(!confirm('Permanently delete ALL your chats, memories and settings? This cannot be undone.'))return;try{await api('data','DELETE');S.cur=null;S.msgs=[];S.mem=[];render();await Promise.all([loadList(),loadMem(),loadStats()]);toast('Your data was deleted.')}catch(e){toast(e.message)}};
+$('#mem').onclick=()=>{loadStats();const s=S.user.settings||{};$('#th').value=document.documentElement.dataset.theme;$('#ins').value=s.instructions||'';$('#am2').checked=!!s.autoMemory;$('#dlg').showModal()};
+$('#ma').onclick=async()=>{const t=$('#mn').value.trim();if(!t)return;try{await api('memories','POST',{text:t});$('#mn').value='';loadMem()}catch(e){toast(e.message)}};
+$('#mc').onclick=async()=>{if(confirm('Delete ALL memories?')){await api('memories','DELETE');loadMem()}};
+$('#ps').onclick=()=>puter.auth.signIn().then(()=>toast('Signed in to Puter')).catch(()=>toast('Puter sign-in cancelled'));
+$('#sv').onclick=async()=>{try{const r=await api('settings','PUT',{theme:$('#th').value,instructions:$('#ins').value,autoMemory:$('#am2').checked});S.user.settings=r.settings;theme($('#th').value);$('#dlg').close()}catch(e){toast(e.message)}};
+</script></body></html>

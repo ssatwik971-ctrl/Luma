@@ -1,0 +1,57 @@
+<!doctype html>
+<html lang="en" data-theme="dark"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Log in — Lumo</title><link rel="icon" type="image/svg+xml" href="/logo.svg">
+<link rel="preconnect" href="https://fonts.googleapis.com"><link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/site.css">
+<script>try{document.documentElement.dataset.theme=localStorage.getItem('theme')||'dark'}catch{}</script></head><body>
+<div class="authwrap">
+<aside class="authside"><a href="/" style="display:flex;align-items:center;gap:10px;text-decoration:none;font-weight:700;font-size:20px;position:relative"><img src="/logo.svg" width="34" height="34" alt="">Lumo</a>
+<div style="position:relative"><h2>Your chats, memory and images — <span class="grad">everywhere you are.</span></h2>
+<ul><li>History synced to your account</li><li>Memory and custom instructions</li><li>GPT-6 Luna, Luna Pro and DALL·E 3</li><li>Export or delete your data any time</li></ul></div>
+<small style="color:var(--mut);position:relative">AI requests run through your own Puter account.</small></aside>
+<main class="authmain"><div class="panel">
+<div id="banner" class="msg"></div>
+<h1 id="t">Welcome back</h1><p class="hint" id="h">Log in to continue to Lumo.</p>
+<div class="tabs" id="tabs"><button type="button" data-m="login" class="on">Log in</button><button type="button" data-m="signup">Sign up</button></div>
+<div id="m" class="msg"></div>
+<form id="f" novalidate>
+<label id="le">Email<input id="e" type="email" autocomplete="email" placeholder="you@example.com" required></label>
+<label id="lp">Password<input id="p" type="password" autocomplete="current-password" placeholder="At least 8 characters" minlength="8" required></label>
+<button class="btn pri lg" id="go" style="margin-top:6px">Log in</button>
+<div class="links"><a id="fg">Forgot password?</a><a id="bk" style="display:none">← Back to log in</a></div>
+</form></div></main></div>
+<script>
+const $=s=>document.querySelector(s);let mode='login',busy=false;
+const COPY={login:['Welcome back','Log in to continue to Lumo.','Log in'],signup:['Create your account','Free to join. Your chats sync across devices.','Create account'],forgot:['Reset your password',"Enter your email and we'll send a reset link.",'Send reset link'],reset:['Choose a new password','Pick a password you have not used elsewhere.','Set new password']};
+function setMode(m){mode=m;const[t,h,b]=COPY[m];$('#t').textContent=t;$('#h').textContent=h;$('#go').textContent=b;note();
+ $('#tabs').style.display=(m==='login'||m==='signup')?'':'none';document.querySelectorAll('#tabs button').forEach(x=>x.classList.toggle('on',x.dataset.m===m));
+ $('#lp').style.display=m==='forgot'?'none':'';$('#le').style.display=m==='reset'?'none':'';
+ $('#p').autocomplete=m==='login'?'current-password':'new-password';$('#fg').style.display=m==='login'?'':'none';$('#bk').style.display=(m==='forgot'||m==='reset')?'':'none';
+ if(history.replaceState&&m!=='reset')history.replaceState(null,'',m==='signup'?'#signup':location.pathname)}
+function note(t,k='err'){const e=$('#m');e.className='msg'+(t?' '+k:'');e.textContent=t||''}
+document.querySelectorAll('#tabs button').forEach(b=>b.onclick=()=>setMode(b.dataset.m));
+$('#fg').onclick=()=>setMode('forgot');$('#bk').onclick=()=>{history.replaceState(null,'',location.pathname);setMode('login')};
+async function api(p,b){const r=await fetch('/api/'+p,{method:'POST',headers:{'content-type':'application/json','x-requested-with':'app'},body:JSON.stringify(b)});const j=await r.json().catch(()=>({}));if(!r.ok)throw new Error(j.error||'Something went wrong (HTTP '+r.status+')');return j}
+$('#f').onsubmit=async ev=>{ev.preventDefault();if(busy)return;note();
+ const email=$('#e').value.trim(),password=$('#p').value;
+ if(mode!=='reset'&&!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email))return note('Enter a valid email address.');
+ if(mode!=='forgot'&&password.length<8)return note('Password must be at least 8 characters.');
+ busy=true;$('#go').disabled=true;const label=$('#go').textContent;$('#go').textContent='Please wait…';
+ try{
+  if(mode==='forgot'){await api('auth/forgot',{email});note('If that account exists, a reset link is on its way.','ok');return}
+  const j=mode==='reset'?await api('auth/reset',{token:new URLSearchParams(location.hash.slice(1)).get('recovery_token'),password}):await api('auth/'+mode,{email,password});
+  if(j.confirm){note('Account created. Confirm your email using the link Netlify sent, then log in.','ok');setMode('login');note('Account created. Confirm your email using the link Netlify sent, then log in.','ok');return}
+  location.replace('/app');
+ }catch(e){note(e.message)}finally{busy=false;$('#go').disabled=false;$('#go').textContent=label}};
+(async()=>{
+ if(location.hash.includes('recovery_token=')){setMode('reset')}else if(location.hash==='#signup')setMode('signup');
+ if(location.hash.includes('confirmation_token='))note('Email confirmation is on for this site. Turn on “autoconfirm” in Netlify Identity settings, or confirm from the email and log in.','ok');
+ try{const j=await (await fetch('/api/auth/me')).json();if(j.user&&mode!=='reset'){location.replace('/app');return}}catch{}
+ try{const r=await fetch('/api/health'),h=await r.json(),b=$('#banner');
+  if(!h.identity?.ok){b.className='msg warn';b.textContent='Setup needed: Netlify Identity is not enabled for this site, so accounts cannot work yet. The site owner must enable it in Project configuration → Identity.'}
+  else if(h.identity.signupDisabled){b.className='msg warn';b.textContent='Sign-ups are currently closed for this site (registration is invite-only).'}
+  else if(!h.database?.ok){b.className='msg warn';b.textContent='Setup needed: the database is not reachable. Check Data & Storage → Database in Netlify.'}
+ }catch{}
+})();
+setMode(mode);if(location.hash.includes('recovery_token='))setMode('reset');else if(location.hash==='#signup')setMode('signup');
+</script></body></html>

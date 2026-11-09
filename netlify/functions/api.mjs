@@ -29,8 +29,26 @@ async function limit(key, max) {
 }
 const pub = async u => { const [p] = await sql`select settings from profiles where user_id=${u.id}`; return { id: u.id, email: u.email, settings: p?.settings || {} }; };
 
+// ---- Identity diagnostics: never guess why Identity failed, ask the Identity endpoint itself.
+const idErr = e => ({ status: Number(e?.status ?? e?.statusCode) || 0, msg: String(e?.message ?? e).toLowerCase() });
+const IDENTITY_DOWN = 'Netlify Identity is not enabled for this site (or is unreachable). Enable it in Project configuration → Identity, then redeploy. Check /api/health for details.';
+async function identityInfo(origin) {
+  try {
+    const r = await fetch(origin + '/.netlify/identity/settings', { signal: AbortSignal.timeout(4000) });
+    if (!r.ok) return { ok: false, status: r.status };
+    const s = await r.json().catch(() => ({}));
+    return { ok: true, status: r.status, autoconfirm: !!s.autoconfirm, signupDisabled: !!s.disable_signup };
+  } catch { return { ok: false, status: 0 }; }
+}
+async function health(origin) {
+  const out = { identity: await identityInfo(origin), database: { ok: false } };
+  try { await sql`select 1`; out.database.ok = true; } catch (e) { console.error('health: database', e); }
+  out.ok = out.identity.ok && out.database.ok && !out.identity.signupDisabled;
+  return J(out, out.ok ? 200 : 503);
+}
+
 // Auth is delegated to Netlify Identity (sessions are its nf_jwt / nf_refresh cookies).
-async function auth(act, m, b, ip) {
+async function auth(act, m, b, ip, origin) {
   if (act === 'me' && m === 'GET') { const u = await getUser(); return J({ user: u ? await pub(u) : null }); }
   if (m !== 'POST') return E('Not found', 404);
   if (act === 'logout') { await logout(); return J({ ok: true }); }
@@ -44,10 +62,31 @@ async function auth(act, m, b, ip) {
   if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) return E('Enter a valid email');
   if (act === 'signup') {
     if (pw.length < 8) return E('Password must be at least 8 characters');
-    try { await signup(email, pw); } catch { return E('Could not create account with these details'); }
-    try { return J({ user: await pub(await login(email, pw)) }); } catch { return J({ confirm: true }); } // login fails until the email is confirmed
+    try { await signup(email, pw); } catch (e) {
+      const { status, msg } = idErr(e); console.error('identity signup failed', status, msg);
+      const info = await identityInfo(origin);
+      if (!info.ok) return E(IDENTITY_DOWN, 503);
+      if (info.signupDisabled) return E('Sign-ups are closed. Set registration to Open in Identity settings.', 403);
+      if (status === 422 || /already|registered|exists|taken/.test(msg)) return E('An account with this email already exists. Try logging in.', 409);
+      return E('Could not create account: ' + clean(e?.message, 160), 400);
+    }
+    try { return J({ user: await pub(await login(email, pw)) }); }
+    catch (e) {
+      const { status, msg } = idErr(e); console.error('login after signup failed', status, msg);
+      if (/confirm/.test(msg) || !(await identityInfo(origin)).autoconfirm) return J({ confirm: true }); // needs the email confirmation first
+      return E('Account created, but signing in failed. Try logging in.', 500);
+    }
   }
-  if (act === 'login') { try { return J({ user: await pub(await login(email, pw)) }); } catch { return E('Incorrect email or password', 401); } }
+  if (act === 'login') {
+    try { return J({ user: await pub(await login(email, pw)) }); }
+    catch (e) {
+      const { status, msg } = idErr(e); console.error('identity login failed', status, msg);
+      if (/confirm/.test(msg)) return E('Please confirm your email first (check your inbox), or enable autoconfirm in Identity settings.', 403);
+      if (status === 400 || status === 422 || /invalid|incorrect|no user/.test(msg)) return E('Incorrect email or password', 401);
+      if (!(await identityInfo(origin)).ok) return E(IDENTITY_DOWN, 503);
+      return E('Incorrect email or password', 401);
+    }
+  }
   return E('Not found', 404);
 }
 
@@ -55,15 +94,33 @@ export default async (req) => {
   const m = req.method, url = new URL(req.url);
   const [a, b, c] = url.pathname.replace(/^\/api\//, '').split('/').filter(Boolean);
   if (m !== 'GET') { if (req.headers.get('x-requested-with') !== 'app') return E('Forbidden', 403); try { verifyRequestOrigin(req); } catch { return E('Forbidden', 403); } }
+  if (a === 'health' && m === 'GET') return health(url.origin);
   let body = {};
   if (m === 'POST' || m === 'PUT' || m === 'PATCH') { try { body = await req.json(); } catch { return E('Invalid JSON'); } }
   try {
     await init();
-    if (a === 'auth') return await auth(b, m, body, req.headers.get('x-nf-client-connection-ip') || 'x');
+    if (a === 'auth') return await auth(b, m, body, req.headers.get('x-nf-client-connection-ip') || 'x', url.origin);
     const iu = await getUser();
     if (!iu) return E('Unauthorized', 401);
     const uid = iu.id;
     if (!(await limit('u' + uid, 240))) return E('Too many requests', 429);
+
+    if (a === 'stats' && m === 'GET') {
+      const [s] = await sql`select (select count(*)::int from conversations where user_id=${uid}) chats, (select count(*)::int from messages where user_id=${uid}) messages, (select count(*)::int from memories where user_id=${uid}) memories`;
+      return J({ stats: s });
+    }
+    if (a === 'export' && m === 'GET') {
+      const conversations = await sql`select id,title,model,pinned,updated_at from conversations where user_id=${uid} order by updated_at desc`;
+      const messages = await sql`select conv_id,role,content,model,created_at from messages where user_id=${uid} order by seq`;
+      const memories = await sql`select text,created_at from memories where user_id=${uid} order by created_at`;
+      const [p] = await sql`select settings from profiles where user_id=${uid}`;
+      const out = conversations.map(c => ({ ...c, messages: messages.filter(x => x.conv_id === c.id).map(({ conv_id, ...r }) => r) }));
+      return J({ exported_at: new Date().toISOString(), email: iu.email, settings: p?.settings || {}, memories, conversations: out }, 200, { 'content-disposition': 'attachment; filename="lumo-export.json"' });
+    }
+    if (a === 'data' && m === 'DELETE') { // wipes this user's chats, memories and settings (the Identity login itself stays)
+      await sql`delete from conversations where user_id=${uid}`; await sql`delete from memories where user_id=${uid}`; await sql`delete from profiles where user_id=${uid}`;
+      return J({ ok: true });
+    }
     if (b && !UUID.test(b)) return E('Bad id');
 
     if (a === 'settings' && m === 'PUT') {
