@@ -21,6 +21,7 @@
 5. After first `npm install`, commit the lockfile so `latest` dependencies are pinned.
 
 ## Troubleshooting sign-up / login
+- Site protection (password / Netlify login) must be **off** for production, otherwise every Identity request returns 401.
 - Login page shows a yellow **Setup needed** banner: Identity is not enabled (or the database is unreachable). Fix it in Netlify, redeploy, reload.
 - "Sign-ups are closed": set Identity registration to **Open**.
 - "Please confirm your email": turn on **autoconfirm**, or click the link in the confirmation email.
