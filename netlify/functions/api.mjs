@@ -107,7 +107,7 @@ export default async (req) => {
     const iu = await getUser();
     if (!iu) return E('Unauthorized', 401);
     const uid = iu.id;
-    if (!(await limit('u' + uid, 240))) return E('Too many requests', 429);
+    // Avoid a database write on every read-only request; mutations remain rate-limited.\n    if (m !== 'GET' && !(await limit('u' + uid, 240))) return E('Too many requests', 429);
 
     if (a === 'sync' && m === 'POST') {
       const incoming = Array.isArray(body.conversations) ? body.conversations : [];
