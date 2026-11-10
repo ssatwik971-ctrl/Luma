@@ -3,7 +3,7 @@ const $=s=>document.querySelector(s);
 const MODELS={luna:{id:'openai/gpt-6-luna',name:'GPT-6 Luna'},pro:{id:'openai/gpt-6-luna-pro',name:'GPT-6 Luna Pro'},video:{id:'google/gemini-2.5-flash',name:'Gemini 2.5 Flash (video)'},image:{name:'GPT Image Flare',img:true}};
 const VOICE={recognition:null,mode:false,finalTranscript:''};
 const S={user:null,convs:[],convCursor:null,convHasMore:false,listRequest:0,cur:null,msgs:[],mem:[],files:[],busy:false,stop:false,temporary:false,model:'luna',mode:'login',prev:'luna',imageModel:'gpt-image-2.5-flare',imageQuality:'medium',imageResolution:'1024x1024'};
-const LOCAL={db:null,dirty:new Set(),timer:null,maxTimer:null,syncing:false,blockSync:false};
+const LOCAL={db:null,dirty:new Set(),timer:null,maxTimer:null,syncing:false,blockSync:false,retryDelay:0};
 function localId(){return crypto.randomUUID()}
 function openDBNamed(name){return new Promise((resolve,reject)=>{const r=indexedDB.open(name,3);r.onupgradeneeded=()=>{const db=r.result,tx=r.transaction;const store=db.objectStoreNames.contains('conversations')?tx.objectStore('conversations'):db.createObjectStore('conversations',{keyPath:'id'});if(store.indexNames.contains('pendingSync'))store.deleteIndex('pendingSync')};r.onsuccess=()=>resolve(r.result);r.onerror=()=>reject(r.error)})}
 // Local chats are stored per account so a second user on the same browser never sees them.
@@ -22,7 +22,7 @@ function localGet(id){if(id==null)return Promise.resolve(null);return new Promis
 function localDirtyAll(){return new Promise((resolve,reject)=>{const r=LOCAL.db.transaction('conversations').objectStore('conversations').getAll();r.onsuccess=()=>resolve((r.result||[]).filter(c=>c&&c.pendingSync===true));r.onerror=()=>reject(r.error)})}
 function saveLocal(c,dirty=true){return new Promise((resolve,reject)=>{c.updated_at=new Date().toISOString();if(dirty){c._rev=(Number(c._rev)||0)+1;c.pendingSync=true}else if(typeof c.pendingSync!=='boolean')c.pendingSync=false;const tx=LOCAL.db.transaction('conversations','readwrite');tx.objectStore('conversations').put(c);tx.oncomplete=()=>{if(dirty){LOCAL.dirty.add(c.id);scheduleSync()}updateSyncStatus();resolve()};tx.onerror=()=>reject(tx.error)})}
 function updateSyncStatus(t){const e=$('#syncStatus');if(e)e.textContent=t||(LOCAL.syncing?'Syncing…':LOCAL.dirty.size?'Saved locally · waiting to sync':'All changes synced')}
-function scheduleSync(){clearTimeout(LOCAL.timer);LOCAL.timer=setTimeout(flushSync,300000);if(!LOCAL.maxTimer)LOCAL.maxTimer=setTimeout(flushSync,600000);updateSyncStatus('Saved locally · waiting to sync')}
+function scheduleSync(delay=0){if(LOCAL.timer)return;LOCAL.timer=setTimeout(()=>{LOCAL.timer=null;flushSync()},delay);updateSyncStatus(delay?'Saved locally · retry scheduled':'Sending to cloud…')}
 // Sync is additive and chunked. Each request carries <=50 messages per conversation, <=400 messages and <=900 KB (JSON length bounds the server 1M-character limit and the 6 MB body limit),
 // so long chats never exceed server limits. Messages removed locally (edit/regenerate) are sent as explicit `removed` ids
 // (known server ids minus current ids), so a stale device can never delete messages another device added.
@@ -77,9 +77,9 @@ async function flushSync(opts={}){
    await new Promise((resolve,reject)=>{const tx=LOCAL.db.transaction('conversations','readwrite');tx.objectStore('conversations').put(saved);tx.oncomplete=resolve;tx.onerror=()=>reject(tx.error)});
    if(unchanged)LOCAL.dirty.delete(rec.id);else LOCAL.dirty.add(rec.id);
   }
-  updateSyncStatus();if(!keepalive)await loadList();
- }catch(e){updateSyncStatus('Sync pending · retrying');if(!keepalive)scheduleSync();console.warn('Lumo sync deferred',e)}
- finally{LOCAL.syncing=false;if(LOCAL.dirty.size&&!LOCAL.blockSync&&!keepalive)scheduleSync()}
+  LOCAL.retryDelay=0;updateSyncStatus();if(!keepalive)await loadList();
+ }catch(e){updateSyncStatus('Sync pending · retrying');if(!keepalive){LOCAL.retryDelay=Math.min(LOCAL.retryDelay?LOCAL.retryDelay*2:1000,60000);scheduleSync(LOCAL.retryDelay)}console.warn('Lumo sync deferred',e)}
+ finally{LOCAL.syncing=false;if(LOCAL.dirty.size&&!LOCAL.blockSync&&!keepalive&&!LOCAL.timer)scheduleSync()}
 }
 window.addEventListener('online',()=>flushSync());// Flush once when the page is hidden/closed (keepalive lets the request outlive the page). Throttled so tab switching
 // does not wake the database repeatedly.
