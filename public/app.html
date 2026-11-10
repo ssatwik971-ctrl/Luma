@@ -222,7 +222,7 @@ async function loadUsage(){
   box.append(usageSection('Puter-reported API usage'));
   if(!items.length){const p=document.createElement('p');p.style.cssText='grid-column:1/-1;color:var(--mut);font-size:13px';p.textContent='No API breakdown is available yet. Puter may take about a minute to update it.';box.append(p)}
   for(const [name,v] of items.slice(0,12)){box.append(usageCard(name,money(v.cost),Number(v.count||0).toLocaleString()+' calls · '+Number(v.units||0).toLocaleString()+' units'))}
-  const history=readUsageHistory(),models=['luna','pro','image'],names={luna:'GPT-6 Luna',pro:'GPT-6 Luna Pro',image:'Nano Banana 2.1'};
+  const history=readUsageHistory(),models=['luna','pro','video','image'],names={luna:'GPT-6 Luna',pro:'GPT-6 Luna Pro',video:'Gemini 2.5 Flash (video)',image:'Nano Banana 2.1'};
   const totals=Object.fromEntries(models.map(m=>[m,history.filter(x=>x.model===m).length]));
   box.append(usageSection('Lumo model activity · tracked on this device'));
   box.append(usageCard('Tracked successful requests',history.length.toLocaleString(),'local activity, not billing data'));
