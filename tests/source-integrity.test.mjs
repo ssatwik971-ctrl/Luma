@@ -224,3 +224,19 @@ test('Phase 5 export groups messages in one pass rather than filtering per conve
   assert.ok(api.includes('for (const message of messages)'));
   assert.ok(!api.includes('messages.filter(x => x.conv_id === c.id)'));
 });
+
+test('Phase 5 conversation history uses bounded keyset pagination', () => {
+  assert.ok(api.includes("url.searchParams.get('limit')"));
+  assert.ok(api.includes('Math.min(100'));
+  assert.ok(api.includes('nextCursor, hasMore'));
+  assert.ok(api.includes('order by pinned desc, updated_at desc, id desc'));
+  assert.ok(api.includes('(c.pinned,c.updated_at,c.id) <'));
+});
+
+test('Phase 5 chat sidebar supports loading additional pages and cancels stale searches', () => {
+  assert.ok(app.includes('id="loadMoreChats"'));
+  assert.ok(app.includes('async function loadList(reset=true)'));
+  assert.ok(app.includes("$('#loadMoreChats').onclick"));
+  assert.ok(app.includes('const request=++S.listRequest'));
+  assert.ok(app.includes('if(request!==S.listRequest)return'));
+});
