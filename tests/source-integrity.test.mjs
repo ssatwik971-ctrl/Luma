@@ -166,7 +166,7 @@ test('Phase 4 selects recent conversation context plus relevant older turns', ()
 });
 
 test('Phase 4 application and API scripts both parse after context integration', () => {
-  const scriptOpen = app.lastIndexOf('<script>');
+  const scriptOpen = app.indexOf('<script>\\nconst $=');
   const scriptClose = app.indexOf('</script>', scriptOpen);
   assert.doesNotThrow(() => new vm.Script(app.slice(scriptOpen + 8, scriptClose)));
   const result = spawnSync(process.execPath, ['--check', 'netlify/functions/api.mjs'], { encoding: 'utf8' });
@@ -191,4 +191,16 @@ test('Phase 4 long-context retrieval preserves adjacent user and assistant turns
 
 test('Phase 4 memory-use preference is persisted by the API', () => {
   assert.ok(api.includes("if (typeof body.useMemories === 'boolean') s.useMemories = body.useMemories;"));
+});
+
+test('Phase 4 smart model routing is scored and user preference persists', () => {
+  assert.ok(app.includes('function routeModel(text)'));
+  assert.ok(app.includes('score>=3?\'pro\':\'luna\''));
+  assert.ok(app.includes("api('settings','PUT',{autoRoute:S.autoRoute})"));
+  assert.ok(api.includes("if (typeof body.autoRoute === 'boolean') s.autoRoute = body.autoRoute;"));
+});
+
+test('Phase 4 selected context is bounded by a character budget', () => {
+  assert.ok(app.includes('function fitContextBudget(history,maxChars=28000)'));
+  assert.ok(app.includes('fitContextBudget(selectRelevantHistory'));
 });
