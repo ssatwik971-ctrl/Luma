@@ -248,3 +248,9 @@ test('Phase 5 IndexedDB migration indexes pending local changes', () => {
   assert.ok(!app.includes('function localAll()'));
   assert.ok(app.includes("index('pendingSync').getAll(true)"));
 });
+
+test('Phase 5 strips binary image data from cloud sync and restores generated images locally', () => {
+  assert.ok(app.includes('map(({_imgs,dataUrl,gen,...a})=>a)'));
+  assert.ok(app.includes('local.attachments?.[i]?.dataUrl?{...a,dataUrl:local.attachments[i].dataUrl}:a'));
+  assert.ok(app.includes('_imgs:local._imgs||[]'));
+});
