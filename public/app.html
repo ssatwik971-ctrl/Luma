@@ -32,14 +32,17 @@ code:not(pre code){background:var(--card);padding:1px 5px;border-radius:5px}tabl
 dialog{background:var(--sb);color:var(--fg);border:1px solid var(--bd);border-radius:18px;width:min(560px,94vw);padding:20px}dialog::backdrop{background:#0008}
 dialog h3{margin:14px 0 6px}.mem{display:flex;gap:8px;align-items:center;padding:6px 0;border-bottom:1px solid var(--bd)}.mem span{flex:1;font-size:14px}
 #toast{position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:var(--card);border:1px solid var(--bd);padding:10px 16px;border-radius:12px;display:none;z-index:30;max-width:90vw}
+.toolrow{display:flex;gap:6px;flex-wrap:wrap}.toolrow button.active{background:linear-gradient(135deg,var(--ac),var(--ac2));color:#fff;border-color:transparent}
+#artifactDlg{width:min(1100px,96vw);height:min(92vh,900px);max-height:92vh}#artifactDlg .studio{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:12px;height:calc(100% - 52px)}#artifactCode{height:100%;min-height:260px;resize:none;font:12px/1.5 ui-monospace,monospace}#artifactFrame{width:100%;height:100%;min-height:260px;background:#fff;border:1px solid var(--bd);border-radius:12px}#artifactPrompt{min-height:76px;resize:vertical}
+@media(max-width:760px){#artifactDlg .studio{grid-template-columns:1fr;overflow:auto}#artifactCode,#artifactFrame{height:38vh;min-height:220px}}
 @media(max-width:760px){#sb{position:fixed;inset:0 auto 0 0;transform:translateX(-100%)}#sb.open{transform:none}#menu{display:inline-block}}
 </style></head><body>
 <aside id="sb"><div style="display:flex;align-items:center;gap:10px;padding:2px 4px"><img src="/logo.svg" width="30" height="30" alt=""><b style="font-size:18px;letter-spacing:.3px">Lumo</b></div><button class="pri" id="nc">+ New chat</button><input id="q" placeholder="Search chats"><div id="list"></div>
 <div class="row"><button id="mem" class="sp">Settings &amp; memory</button></div></aside>
-<main><div id="top"><button id="menu">☰</button><select id="model" style="max-width:220px"><option value="luna">GPT-6 Luna</option><option value="pro">GPT-6 Luna Pro</option><option value="dalle">GPT Image 2 (images)</option></select><span class="sp" style="flex:1"></span><a href="/" style="color:var(--mut);font-size:13px;text-decoration:none">Home</a><span id="who" style="color:var(--mut);font-size:13px"></span></div>
+<main><div id="top"><button id="menu">☰</button><select id="model" style="max-width:220px"><option value="luna">GPT-6 Luna</option><option value="pro">GPT-6 Luna Pro</option><option value="image">FLUX.1 Schnell (images)</option></select><span class="sp" style="flex:1"></span><a href="/" style="color:var(--mut);font-size:13px;text-decoration:none">Home</a><span id="who" style="color:var(--mut);font-size:13px"></span></div>
 <div id="msgs"><div class="w" id="mw"></div></div>
 <div id="comp"><div class="box"><div id="chips"></div><textarea id="in" rows="1" placeholder="Message Lumo…"></textarea>
-<div class="row"><input type="file" id="file" hidden multiple><button id="att" title="Attach images or text/code files">📎</button><button id="img" title="Generate an image with GPT Image 2">🖼 Image</button><span class="sp"></span><button class="pri" id="go">Send</button></div></div></div></main>
+<div class="toolrow"><button id="research" title="Search the web and prepare a cited research report">🔎 Deep Research</button><button id="artifact" title="Create an interactive HTML artifact">◇ Artifact Studio</button><button id="mic" title="Dictate a message">🎙 Voice</button><button id="speak" title="Read the latest answer aloud">🔊 Read aloud</button><button id="voiceMode" title="Enable hands-free voice conversation">◎ Voice mode</button></div><div class="row"><input type="file" id="file" hidden multiple><button id="att" title="Attach images or text/code files">📎</button><button id="img" title="Generate an image with FLUX.1 Schnell">🖼 Image</button><span class="sp"></span><button class="pri" id="go">Send</button></div></div></div></main>
 <dialog id="dlg"><h2 style="margin:0">Settings</h2><h3>Theme</h3><select id="th"><option value="dark">Dark</option><option value="light">Light</option></select>
 <h3>Personalization</h3><textarea id="ins" rows="3" placeholder="Custom instructions (how should Lumo respond?)"></textarea>
 <label style="display:flex;gap:8px;margin-top:8px"><input type="checkbox" id="am2" style="width:auto"> Auto-save memories (uses a small extra model call from your Puter credits)</label>
@@ -47,13 +50,15 @@ dialog h3{margin:14px 0 6px}.mem{display:flex;gap:8px;align-items:center;padding
 <h3>Account</h3><div id="acct" style="color:var(--mut);font-size:14px">Loading…</div><div class="row" style="margin-top:8px"><button id="ex" class="sp">Export my data</button><button id="dd" class="sp">Delete my chats &amp; memories</button></div>
 <div class="row" style="margin-top:14px"><button id="mc">Delete all memories</button><button id="ps">Puter account</button><span class="sp"></span><button id="lo">Log out</button><button class="pri" id="sv">Save</button></div></dialog>
 <div id="toast"></div>
+<dialog id="artifactDlg"><div class="row" style="margin-bottom:10px"><h2 style="margin:0;flex:1">Artifact Studio</h2><button id="artifactClose">Close</button></div><div class="row" style="margin-bottom:10px"><textarea id="artifactPrompt" placeholder="Describe the website, interactive diagram, calculator or mini-app you want…"></textarea><button class="pri" id="artifactGenerate">Generate</button></div><div class="row" style="margin-bottom:8px"><span style="color:var(--mut);font-size:13px">Editable HTML · isolated live preview</span><span class="sp"></span><button id="artifactUpdate">Update preview</button><button id="artifactDownload">Download HTML</button></div><div class="studio"><textarea id="artifactCode" spellcheck="false" placeholder="Generated HTML will appear here…"></textarea><iframe id="artifactFrame" title="Artifact live preview" sandbox="allow-scripts"></iframe></div></dialog>
 <script src="https://js.puter.com/v2/"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/marked/12.0.2/marked.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/dompurify/3.1.6/purify.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
 <script>
 const $=s=>document.querySelector(s);
-const MODELS={luna:{id:'openai/gpt-6-luna',name:'GPT-6 Luna'},pro:{id:'openai/gpt-5.6-luna-pro',name:'GPT-6 Luna Pro'},dalle:{id:'openai/gpt-image-2',name:'GPT Image 2',img:true}};
+const MODELS={luna:{id:'openai/gpt-6-luna',name:'GPT-6 Luna'},pro:{id:'openai/gpt-6-luna-pro',name:'GPT-6 Luna Pro'},image:{id:'black-forest-labs/flux-schnell',name:'FLUX.1 Schnell',img:true}};
+const VOICE={recognition:null,mode:false};
 const S={user:null,convs:[],cur:null,msgs:[],mem:[],files:[],busy:false,stop:false,model:'luna',mode:'login',prev:'luna'};
 async function api(p,m='GET',b){const r=await fetch('/api/'+p,{method:m,headers:{'content-type':'application/json','x-requested-with':'app'},body:b?JSON.stringify(b):undefined});const j=await r.json().catch(()=>({}));if(r.status===401&&!p.startsWith('auth/')){location.replace('/login');throw new Error('Signed out')}if(!r.ok)throw new Error(j.error||('HTTP '+r.status));return j}
 function toast(t){const e=$('#toast');e.textContent=t;e.style.display='block';clearTimeout(toast.t);toast.t=setTimeout(()=>e.style.display='none',4500)}
@@ -63,7 +68,7 @@ theme(localStorage.getItem('theme')||'dark');
 
 // ---- session
 $('#lo').onclick=async()=>{try{await api('auth/logout','POST',{})}catch{}location.replace('/login')};
-async function boot(u){S.user=u;$('#who').textContent=u.email;const s=u.settings||{};if(s.theme)theme(s.theme);S.model=s.model||'luna';$('#model').value=S.model;$('#img').classList.toggle('on2',S.model==='dalle');await Promise.all([loadList(),loadMem()])}
+async function boot(u){S.user=u;$('#who').textContent=u.email;const s=u.settings||{};if(s.theme)theme(s.theme);S.model=s.model==='dalle'?'image':(s.model||'luna');$('#model').value=S.model;$('#img').classList.toggle('on2',S.model==='image');await Promise.all([loadList(),loadMem()])}
 (async()=>{try{const{user}=await api('auth/me');if(!user){location.replace('/login');return}await boot(user)}catch(e){if(e.message!=='Signed out')toast(e.message)}})();
 
 // ---- conversations
@@ -88,13 +93,14 @@ function bubble(m,i){const d=document.createElement('div');d.className='m '+m.ro
   const cp=document.createElement('button');cp.textContent='Copy';cp.onclick=()=>navigator.clipboard.writeText(m.content);a.append(cp);
   if(m.role==='user'){const e=document.createElement('button');e.textContent='Edit';e.onclick=()=>editMsg(i);a.append(e)}
   else if(i===S.msgs.length-1){const r=document.createElement('button');r.textContent='Regenerate';r.onclick=()=>regen();a.append(r)}
+  const artifact=(m.attachments||[]).find(x=>x.type==='text/html'&&x.text);if(artifact){const op=document.createElement('button');op.textContent='Open in Artifact Studio';op.onclick=()=>artifactOpen(artifact.text);a.append(op)}
   d.append(a)}return d}
-function render(){const w=$('#mw');w.innerHTML='';if(!S.msgs.length)w.innerHTML='<div style="text-align:center;margin-top:16vh"><img src="/logo.svg" width="64" height="64" alt=""><h1 style="font-size:34px">What can I help with?</h1><p style="color:var(--mut)">Pick a model above. Image uploads, text files and GPT Image 2 generation are supported.</p></div>';S.msgs.forEach((m,i)=>w.append(bubble(m,i)));$('#msgs').scrollTop=1e9}
+function render(){const w=$('#mw');w.innerHTML='';if(!S.msgs.length)w.innerHTML='<div style="text-align:center;margin-top:16vh"><img src="/logo.svg" width="64" height="64" alt=""><h1 style="font-size:34px">What can I help with?</h1><p style="color:var(--mut)">Chat, research the web, create interactive artifacts, talk by voice, or generate images.</p></div>';S.msgs.forEach((m,i)=>w.append(bubble(m,i)));$('#msgs').scrollTop=1e9}
 function chips(){const c=$('#chips');c.innerHTML='';S.files.forEach((f,i)=>{const e=document.createElement('span');e.className='chip';e.textContent=f.name+' ✕';e.style.cursor='pointer';e.onclick=()=>{S.files.splice(i,1);chips()};c.append(e)})}
 
 // ---- composer
-$('#model').onchange=e=>{S.model=e.target.value;$('#img').classList.toggle('on2',S.model==='dalle');api('settings','PUT',{model:S.model}).catch(()=>{})};
-$('#img').onclick=()=>{if(S.model==='dalle'){S.model=S.prev;}else{S.prev=S.model;S.model='dalle'}$('#model').value=S.model;$('#img').classList.toggle('on2',S.model==='dalle')};
+$('#model').onchange=e=>{S.model=e.target.value;$('#img').classList.toggle('on2',S.model==='image');api('settings','PUT',{model:S.model}).catch(()=>{})};
+$('#img').onclick=()=>{if(S.model==='image'){S.model=S.prev;}else{S.prev=S.model;S.model='image'}$('#model').value=S.model;$('#img').classList.toggle('on2',S.model==='image')};
 $('#att').onclick=()=>$('#file').click();
 $('#file').onchange=async e=>{for(const f of e.target.files){try{
  if(f.type.startsWith('image/')){if(f.size>8e6)throw Error('Image over 8 MB');S.files.push({name:f.name,type:f.type,size:f.size,dataUrl:await new Promise(r=>{const x=new FileReader;x.onload=()=>r(x.result);x.readAsDataURL(f)})})}
@@ -120,13 +126,14 @@ async function gen(){
  busy(true);S.stop=false;const M=MODELS[S.model],w=$('#mw'),d=document.createElement('div');d.className='m assistant';d.innerHTML='<div class="b" style="color:var(--mut)">Thinking…</div>';w.append(d);$('#msgs').scrollTop=1e9;
  const last=S.msgs[S.msgs.length-1];let acc='',atts=[];
  try{
-  if(M.img){const im=await puter.ai.txt2img(last.content,{model:M.id});const u=await toDataUrl(im.src);acc='Generated with GPT Image 2.';atts=[{name:'image.png',type:'image/png',size:u.length,gen:true,dataUrl:u}]}
+  if(M.img){const im=await puter.ai.txt2img(last.content,{model:M.id,steps:4});const u=await toDataUrl(im.src);acc='Generated with FLUX.1 Schnell.';atts=[{name:'image.png',type:'image/png',size:u.length,gen:true,dataUrl:u}]}
   else{
    const mems=S.mem.map(m=>'- '+m.text).join('\n'),ins=S.user.settings?.instructions||'';
    const sys=[ins&&'User instructions:\n'+ins,mems&&'Known facts about the user (use only when relevant):\n'+mems].filter(Boolean).join('\n\n');
    const full=m=>m.content+(m.attachments||[]).filter(a=>a.text).map(a=>`\n\n[File: ${a.name}]\n${a.text}`).join('')+(m.role==='user'?(m.attachments||[]).filter(a=>a.type?.startsWith('image/')&&!m._imgs).map(a=>`\n[Image "${a.name}" was attached earlier and is not available]`).join(''):'');
    const hist=S.msgs.map(m=>({role:m.role,content:full(m)}));const imgs=last._imgs||[];let r;
    if(imgs.length){const tr=hist.slice(0,-1).map(m=>m.role+': '+m.content).join('\n\n');r=await puter.ai.chat((sys?sys+'\n\n':'')+(tr?'Conversation so far:\n'+tr+'\n\n':'')+'user: '+hist[hist.length-1].content,imgs,{model:M.id,stream:true})}
+   else if(S.research){r=await puter.ai.chat([{role:'system',content:(sys?sys+'\n\n':'')+'You are Lumo Deep Research. Conduct multi-step web research using the web_search tool. Search current, authoritative sources; compare evidence; distinguish facts from uncertainty; produce a structured report with executive summary, findings, caveats, and source links/citations. Never invent sources. Cite important factual claims.'},...hist],{model:M.id,tools:[{type:'web_search'}],stream:true});}
    else r=await puter.ai.chat([...(sys?[{role:'system',content:sys}]:[]),...hist],{model:M.id,stream:true});
    if(r&&r[Symbol.asyncIterator]){for await(const p of r){if(S.stop)break;acc+=p?.text||'';d.firstChild.replaceChildren(md(acc));$('#msgs').scrollTop=1e9}}
    else acc=r?.message?.content?.toString?.()||String(r);
@@ -134,10 +141,25 @@ async function gen(){
   if(!acc&&!atts.length)throw Error('The model returned an empty response.');
   const{message}=await api(`conversations/${S.cur}/messages`,'POST',{role:'assistant',content:acc,model:S.model,attachments:atts});S.msgs.push(message);
   if(!M.img&&S.user.settings?.autoMemory)extractMem(last.content,acc);
+  if(VOICE.mode&&!M.img&&acc)speakText(acc);
  }catch(e){const t=errText(e);d.innerHTML='';const x=document.createElement('div');x.className='err';x.textContent='Request failed: '+t+(/fund|credit|balance|usage|limit|quota/i.test(t)?' — this may be a Puter credit/usage limit on your Puter account.':'')+' (No other model was substituted.)';const rb=document.createElement('button');rb.textContent='Retry';rb.onclick=()=>{d.remove();gen()};x.append(document.createElement('br'),rb);d.append(x);busy(false);return}
  busy(false);render();loadList()}
 async function regen(){if(S.busy)return;const l=S.msgs[S.msgs.length-1];if(l?.role!=='assistant')return;await api(`conversations/${S.cur}/messages?from=${l.id}`,'DELETE');S.msgs.pop();render();try{await ensurePuter()}catch{return toast('Puter sign-in required')}gen()}
 async function editMsg(i){if(S.busy)return;const m=S.msgs[i],t=prompt('Edit message',m.content);if(!t||t===m.content)return;await api(`conversations/${S.cur}/messages?from=${m.id}`,'DELETE');const keep=(m.attachments||[]).filter(a=>a.text);S.msgs.length=i;render();send(t,keep)}
+S.research=false;
+$('#research').onclick=()=>{S.research=!S.research;$('#research').classList.toggle('active',S.research);toast(S.research?'Deep Research enabled: web search and citations will be used.':'Deep Research disabled.')};
+function artifactOpen(code=''){if(code)$('#artifactCode').value=code;$('#artifactDlg').showModal();if(code)updateArtifactPreview()}
+function updateArtifactPreview(){$('#artifactFrame').srcdoc=$('#artifactCode').value}
+$('#artifact').onclick=()=>artifactOpen();
+$('#artifactClose').onclick=()=>$('#artifactDlg').close();
+$('#artifactUpdate').onclick=updateArtifactPreview;
+$('#artifactGenerate').onclick=async()=>{const prompt=$('#artifactPrompt').value.trim();if(!prompt)return toast('Describe the artifact first.');const btn=$('#artifactGenerate');btn.disabled=true;btn.textContent='Building…';try{await ensurePuter();const existing=$('#artifactCode').value;const r=await puter.ai.chat([{role:'system',content:'Create a complete, polished, self-contained HTML artifact with embedded CSS and JavaScript. Return ONLY HTML source, no markdown fences. Make it responsive, accessible and interactive. Do not load external scripts, fonts or resources. It will run in a sandboxed iframe.'},{role:'user',content:prompt+(existing?'\n\nImprove this existing artifact:\n'+existing:'')}],{model:MODELS.pro.id});let code=r?.message?.content?.toString?.()||String(r);code=code.replace(/^\s*\x60\x60\x60(?:html)?\s*/i,'').replace(/\s*\x60\x60\x60\s*$/,'').trim();if(!/^<!doctype html|^<html/i.test(code))throw Error('The model did not return a complete HTML document. Try a more specific prompt.');$('#artifactCode').value=code;updateArtifactPreview();if(S.cur){await api('conversations/'+S.cur+'/messages','POST',{role:'assistant',content:'Created an interactive artifact. Open it in Artifact Studio to preview or edit the source.',model:S.model,attachments:[{name:'artifact.html',type:'text/html',size:code.length,text:code}]});await openConv(S.cur)}toast('Artifact generated and saved in this conversation.')}catch(e){toast('Artifact generation failed: '+errText(e))}finally{btn.disabled=false;btn.textContent='Generate'}};
+$('#artifactDownload').onclick=()=>{const blob=new Blob([$('#artifactCode').value],{type:'text/html'});const url=URL.createObjectURL(blob);const a=document.createElement('a');a.href=url;a.download='lumo-artifact.html';a.click();URL.revokeObjectURL(url)};
+function speakText(text){if(!('speechSynthesis'in window))return toast('Text-to-speech is not supported in this browser.');speechSynthesis.cancel();const plain=String(text).replace(/\x60{3}[\s\S]*?\x60{3}/g,' Code block omitted. ').replace(/[#*_>\x60]/g,' ').slice(0,12000);const utter=new SpeechSynthesisUtterance(plain);utter.rate=1;speechSynthesis.speak(utter)}
+$('#speak').onclick=()=>{const last=S.msgs.filter(m=>m.role==='assistant').slice(-1)[0];if(!last)return toast('There is no answer to read yet.');speakText(last.content)};
+function startListening(){const SR=window.SpeechRecognition||window.webkitSpeechRecognition;if(!SR)return toast('Speech recognition is not supported here. Try Chrome on a supported device.');if(VOICE.recognition){try{VOICE.recognition.stop()}catch{}VOICE.recognition=null;$('#mic').classList.remove('active');return}if('speechSynthesis'in window)speechSynthesis.cancel();const rec=new SR();VOICE.recognition=rec;rec.lang=navigator.language||'en-IN';rec.interimResults=true;rec.continuous=false;rec.onstart=()=>$('#mic').classList.add('active');rec.onresult=e=>{let text='';for(let i=e.resultIndex;i<e.results.length;i++)text+=e.results[i][0].transcript;$('#in').value=text;$('#in').dispatchEvent(new Event('input'))};rec.onerror=e=>toast('Voice input: '+e.error);rec.onend=()=>{VOICE.recognition=null;$('#mic').classList.remove('active');if(VOICE.mode&&$('#in').value.trim()&&!S.busy)$('#go').click()};try{rec.start()}catch(e){toast('Could not start microphone: '+e.message)}}
+$('#mic').onclick=startListening;
+$('#voiceMode').onclick=()=>{VOICE.mode=!VOICE.mode;$('#voiceMode').classList.toggle('active',VOICE.mode);if(VOICE.mode){toast('Voice mode on. Speak, then pause to send.');startListening()}else{if(VOICE.recognition)VOICE.recognition.stop();if('speechSynthesis'in window)speechSynthesis.cancel();toast('Voice mode off.')}};
 async function extractMem(u,a){try{const r=await puter.ai.chat(`From this exchange extract up to 3 durable, non-sensitive facts or preferences the USER stated about themselves. Reply ONLY with a JSON array of short strings, or [] if none.\n\nUser: ${u.slice(0,2000)}\nAssistant: ${a.slice(0,1000)}`,{model:MODELS.luna.id});const t=(r?.message?.content?.toString?.()||'').replace(/```json|```/g,'').trim();const arr=JSON.parse(t);if(Array.isArray(arr))for(const x of arr.slice(0,3))if(typeof x==='string'&&x.trim())await api('memories','POST',{text:x});loadMem()}catch{}}
 
 // ---- settings & memory
