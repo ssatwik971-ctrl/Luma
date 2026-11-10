@@ -22,7 +22,7 @@ const init = () => ready ??= (async () => {
   const [syncIndex] = await sql`select 1 from pg_indexes where schemaname=current_schema() and indexname='messages_id_user_unique' limit 1`;
   if (!syncIndex) {
     await sql`delete from messages a using messages b where a.user_id=b.user_id and a.id=b.id and a.seq>b.seq`;
-    await sql`create unique index messages_id_user_unique on messages(id,user_id)`;
+    await sql`create unique index if not exists messages_id_user_unique on messages(id,user_id)`;
   }
   await sql`create index if not exists msg_conv on messages(conv_id, seq)`;
   await sql`create index if not exists messages_user_conv_seq on messages(user_id, conv_id, seq)`;
