@@ -29,7 +29,7 @@
 
 ## Known limits
 - Document OCR supports PDF, DOCX, PPTX and XLSX up to 10 MB per file in the app. OCR is a separate Puter AI operation and may consume the user's Puter resources; scanned or unusually formatted documents may extract imperfectly. Extracted text is limited to 60,000 characters per file and 180,000 per message.
-- Uploaded images are analysed in-session; only filenames sync across devices. Image attachments are not reloaded as model inputs after reopening a conversation.
+- Uploaded image bytes remain local to the device; same-device cached image inputs are restored when reopening a synced conversation. They are not uploaded to cloud history or available on other devices.
 - Deep Research performs three focused web-search stages and a synthesis pass. Actual search availability and citations depend on Puter's model/tool access; users should verify important claims against linked primary sources.
 - Usage dashboard values come from `puter.auth.getMonthlyUsage()`. Resource amounts are Puter's microcent units; the dashboard converts them to USD and does not forecast charges.
 - Identity does not work under `netlify dev` (test on a deploy). Live end-to-end tests require the site's Netlify Identity and Database configuration.
@@ -74,3 +74,9 @@ Phase 2 features are being implemented on the development branch and still requi
 - **Voice playback controls:** read the latest response aloud and stop playback/listening. Hands-free mode continues listening after the assistant finishes speaking; microphone permission and supported browser APIs are required.
 - **Image continuity on the same device:** when a synced conversation is reopened, Lumo restores locally cached image inputs for that device. The image bytes are not uploaded to cloud history, so they are not available on other devices.
 - **Arena remains removed:** Phase 3 does not add parallel model responses. Existing PDF/Office OCR and image generation continue to use the configured Puter.js services and may consume the user's Puter resources.
+
+
+### Phase 3 · Audio and video input
+- Audio files can be attached and explicitly transcribed with Puter.js `puter.ai.speech2txt()`. Transcription is user-triggered, not automatic; the transcript is inserted into the composer for review before sending. The transcription request uses Puter resources and may incur usage.
+- Video files can be attached (up to 20 MB) and analyzed with the explicit **Gemini 2.5 Flash (video)** model option. Lumo never silently switches models; select that model before sending a video. Video analysis is one chat request, but video-capable model support and billing depend on Puter's current service availability.
+- Video files are retained in the current local conversation only; the raw video is not included in cloud sync. Reopen the chat on the same device to access locally stored media where the browser retains it.
