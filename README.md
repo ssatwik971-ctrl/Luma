@@ -5,7 +5,7 @@
 - `/api/health` shows whether Identity and the database are reachable (no secrets). Open it first if login or sign-up fails.
 
 ## Architecture
-- **AI**: Puter.js only, in the browser. Models: `openai/gpt-6-luna`, `openai/gpt-6-luna-pro` (`puter.ai.chat`, streaming, image input), `gemini-nano-banana-2.1` (Nano Banana 2.1; selectable 1K/2K/4K output) (`puter.ai.txt2img`). Users sign in to Puter and pay from their own credits. No AI keys anywhere. No model is ever substituted: failures show an error + Retry.
+- **AI**: Puter.js only, in the browser. Models: `openai/gpt-6-luna`, `openai/gpt-6-luna-pro` (`puter.ai.chat`, streaming, image input), `gemini-nano-banana-2.1` (Nano Banana 2.1; selectable 1K/2K/4K output) (`puter.ai.txt2img`). PDF, DOCX, PPTX and XLSX text extraction uses Puter Mistral OCR (`puter.ai.img2txt`). Users sign in to Puter and pay from their own credits. No AI keys anywhere. No model is ever substituted: failures show an error + Retry.
 - **Auth**: Netlify Identity via `@netlify/identity` (server-side `signup/login/logout/getUser`, `requestPasswordRecovery`, `recoverPassword`). Identity sends the reset email itself.
 - **Backend**: one Netlify Function `netlify/functions/api.mjs` (`/api/*`): conversations, messages, memories, settings, rate limiting. Every query is filtered by the Identity user id.
 - **Database**: Netlify Database (`@netlify/database`). Tables are created on first request (`create table if not exists`).
@@ -28,7 +28,11 @@
 - Real Identity errors are logged in Netlify Functions logs (`identity signup failed ...`, `identity login failed ...`).
 
 ## Known limits
-PDF/Word upload unsupported. Uploaded images are analysed in-session; only filenames sync across devices. Identity does not work under `netlify dev` (test on a deploy). Not end-to-end tested.
+- Document OCR supports PDF, DOCX, PPTX and XLSX up to 10 MB per file in the app. OCR is a separate Puter AI operation and may consume the user's Puter resources; scanned or unusually formatted documents may extract imperfectly. Extracted text is limited to 60,000 characters per file and 180,000 per message.
+- Uploaded images are analysed in-session; only filenames sync across devices. Image attachments are not reloaded as model inputs after reopening a conversation.
+- Deep Research performs three focused web-search stages and a synthesis pass. Actual search availability and citations depend on Puter's model/tool access; users should verify important claims against linked primary sources.
+- Usage dashboard values come from `puter.auth.getMonthlyUsage()`. Resource amounts are Puter's microcent units; the dashboard converts them to USD and does not forecast charges.
+- Identity does not work under `netlify dev` (test on a deploy). Live end-to-end tests require the site's Netlify Identity and Database configuration.
 
 
 ## Advanced tools
