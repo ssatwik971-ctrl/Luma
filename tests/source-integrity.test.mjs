@@ -98,3 +98,17 @@ test('video model is accepted by conversation sync and user settings', () => {
   assert.ok(api.includes("['luna','pro','video','image']"));
   assert.ok(api.includes("['luna', 'pro', 'video', 'image']"));
 });
+
+test('Phase 3 audio and video attachment safety is enforced', () => {
+  assert.ok(app.includes("Audio over 20 MB"));
+  assert.ok(app.includes("Video over 20 MB."));
+  assert.ok(app.includes("Attach one video per message."));
+  assert.ok(app.includes("Image over 5 MB for inline model input."));
+  assert.ok(app.includes("Use the Transcribe button before sending"));
+});
+
+test('video analysis requires an explicit video-capable model selection', () => {
+  assert.ok(app.includes("S.model!=='video'"));
+  assert.ok(app.includes("google/gemini-2.5-flash"));
+  assert.ok(app.includes("No automatic model switch is made."));
+});
