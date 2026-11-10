@@ -164,3 +164,31 @@ test('Phase 4 selects recent conversation context plus relevant older turns', ()
   assert.ok(app.includes('.slice(0,6)'));
   assert.ok(app.includes('selectRelevantHistory(S.msgs.map'));
 });
+
+test('Phase 4 application and API scripts both parse after context integration', () => {
+  const scriptOpen = app.lastIndexOf('<script>');
+  const scriptClose = app.indexOf('</script>', scriptOpen);
+  assert.doesNotThrow(() => new vm.Script(app.slice(scriptOpen + 8, scriptClose)));
+  const result = spawnSync(process.execPath, ['--check', 'netlify/functions/api.mjs'], { encoding: 'utf8' });
+  assert.equal(result.status, 0, result.stderr || result.stdout);
+});
+
+test('Phase 4 memory retrieval requires meaningful overlap and respects opt-out', () => {
+  assert.ok(app.includes('S.user.settings?.useMemories===false'));
+  assert.ok(app.includes('if(terms.length<2)return'));
+  assert.ok(app.includes('.filter(x=>x.score>=2)'));
+  assert.ok(app.includes('.slice(0,8)'));
+  assert.ok(app.includes('.slice(0,3000)'));
+});
+
+test('Phase 4 long-context retrieval preserves adjacent user and assistant turns', () => {
+  assert.ok(app.includes('function selectRelevantHistory(history,query)'));
+  assert.ok(app.includes('const recentStart=history.length-20'));
+  assert.ok(app.includes('Keep a relevant turn\'s adjacent partner'));
+  assert.ok(app.includes('picked.add(i-1)'));
+  assert.ok(app.includes('picked.add(i+1)'));
+});
+
+test('Phase 4 memory-use preference is persisted by the API', () => {
+  assert.ok(api.includes("if (typeof body.useMemories === 'boolean') s.useMemories = body.useMemories;"));
+});
