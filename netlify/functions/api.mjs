@@ -190,6 +190,7 @@ export default async (req) => {
         const [n] = await sql`select count(*)::int n from memories where user_id=${uid}`; if (n.n >= 200) return E('Memory limit reached (200)');
         const [r] = await sql`insert into memories(user_id,text) values(${uid},${t}) returning id,text,created_at`; return J({ memory: r, duplicate: false });
       }
+      if (m === 'PATCH' && b) { const t=clean(body.text,500).trim(); if(!t)return E('Empty memory'); const [duplicate]=await sql`select id from memories where user_id=${uid} and lower(trim(text))=lower(trim(${t})) and id<>${b} limit 1`; if(duplicate)return E('That memory already exists'); const [r]=await sql`update memories set text=${t} where id=${b} and user_id=${uid} returning id,text,created_at`; if(!r)return E('Not found',404); return J({memory:r}); }
       if (m === 'DELETE') { b ? await sql`delete from memories where id=${b} and user_id=${uid}` : await sql`delete from memories where user_id=${uid}`; return J({ ok: true }); }
     }
     if (a === 'conversations') {
