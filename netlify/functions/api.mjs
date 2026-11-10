@@ -118,7 +118,7 @@ export default async (req) => {
       const convs = [], messages = [];
       for (const c of incoming) {
         if (!c || !UUID.test(c.id || '') || typeof c.title !== 'string' || !Array.isArray(c.messages) || c.messages.length > 100) return E('Invalid conversation in sync batch');
-        convs.push({ id: c.id, title: clean(c.title, 80) || 'New chat', model: ['luna','pro','image'].includes(c.model) ? c.model : 'luna', pinned: !!c.pinned, folder: clean(c.folder,60).trim(), updated_at: c.updated_at || new Date().toISOString() });
+        convs.push({ id: c.id, title: clean(c.title, 80) || 'New chat', model: ['luna','pro','video','image'].includes(c.model) ? c.model : 'luna', pinned: !!c.pinned, folder: clean(c.folder,60).trim(), updated_at: c.updated_at || new Date().toISOString() });
         for (const msg of c.messages) {
           messageCount++;
           if (!msg || !UUID.test(msg.id || '') || !['user','assistant'].includes(msg.role) || typeof msg.content !== 'string' || msg.content.length > 100000) return E('Invalid message in sync batch');
@@ -177,7 +177,7 @@ export default async (req) => {
       if (['light', 'dark'].includes(body.theme)) s.theme = body.theme;
       if (typeof body.instructions === 'string') s.instructions = clean(body.instructions, 2000);
       if (typeof body.autoMemory === 'boolean') s.autoMemory = body.autoMemory;
-      if (['luna', 'pro', 'image'].includes(body.model)) s.model = body.model;
+      if (['luna', 'pro', 'video', 'image'].includes(body.model)) s.model = body.model;
       if (['1K', '2K', '4K'].includes(body.imageQuality)) s.imageQuality = body.imageQuality;
       const [u] = await sql`insert into profiles(user_id,settings) values(${uid},${JSON.stringify(s)}::jsonb) on conflict(user_id) do update set settings = profiles.settings || ${JSON.stringify(s)}::jsonb returning settings`;
       return J({ settings: u.settings });
