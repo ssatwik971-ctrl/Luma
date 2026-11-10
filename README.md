@@ -67,3 +67,10 @@ Phase 2 features are being implemented on the development branch and still requi
 - **Temporary chats** are held in the current page session only. Their messages are not written to IndexedDB, cloud history, or automatic memory extraction; closing or refreshing the page discards them.
 - **Memory management** supports editing and deleting individual saved memories. Duplicate edits are rejected by the API.
 - **Cost control:** Arena mode is removed. A normal response uses one selected/routed model request. Automatic memory extraction remains opt-in because it makes an additional model request.
+
+
+## Phase 3 · Advanced AI and multimodal (in progress)
+- **Voice language selection:** choose English (India/US), Hindi, Bengali, Tamil, Telugu, Marathi or Urdu for browser speech recognition and speech synthesis. Actual language availability depends on the browser and installed voice packs.
+- **Voice playback controls:** read the latest response aloud and stop playback/listening. Hands-free mode continues listening after the assistant finishes speaking; microphone permission and supported browser APIs are required.
+- **Image continuity on the same device:** when a synced conversation is reopened, Lumo restores locally cached image inputs for that device. The image bytes are not uploaded to cloud history, so they are not available on other devices.
+- **Arena remains removed:** Phase 3 does not add parallel model responses. Existing PDF/Office OCR and image generation continue to use the configured Puter.js services and may consume the user's Puter resources.
