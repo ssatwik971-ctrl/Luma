@@ -9,6 +9,7 @@ on:
       - fix/privacy-artifacts-temp-chat
       - fix/small-fixes
       - feature/cloud-images
+      - feature/gpt-image-flare-quality-resolution
   pull_request:
     branches:
       - main

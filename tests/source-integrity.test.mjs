@@ -124,7 +124,18 @@ test('audio and video attachment metadata survives cloud sync and direct message
   assert.equal((api.match(/if \(x\.video === true && type\.startsWith\('video\/'\)\) item\.video = true/g)||[]).length, 2);
 });
 
-test('usage dashboard includes video model activity', () => {
+test('Puter streaming errors are surfaced instead of being mistaken for empty model replies', () => {
+  assert.ok(app.includes("p?.type==='error'"));
+  assert.ok(app.includes("The selected model returned a streaming error."));
+  assert.ok(app.includes('function responseText(r)'));
+});
+test('Artifact Studio normalizes model response content before validating HTML', () => {
+  assert.ok(app.includes('{model:MODELS.pro.id,normalize:true}'));
+  assert.ok(app.includes('let code=responseText(r)'));
+});
+test('usage dashboard includes video model activity and full Puter app API breakdown', () => {
+  assert.ok(app.includes('getDetailedAppUsage(puter.appID)'));
+  assert.ok(!app.includes('items.slice(0,12)'));
   assert.ok(app.includes("models=['luna','pro','video','image']"));
   assert.ok(app.includes("video:'Gemini 2.5 Flash (video)'"));
 });
@@ -248,12 +259,20 @@ test('client reports locally removed messages explicitly and never re-sends alre
   assert.deepEqual(JSON.parse(JSON.stringify(item.messages.map(m => m.id))), [ids[2], ids[3]]);
 });
 
-test('closing or hiding the page flushes pending sync once with keepalive, throttled to protect database wake-ups', () => {
+test('messages sync immediately after local persistence, with bounded retries only when the cloud request fails', () => {
+  assert.ok(appJs.includes('function scheduleSync(delay=0)'));
+  assert.ok(appJs.includes('setTimeout(()=>{LOCAL.timer=null;flushSync()},delay)'));
+  assert.ok(appJs.includes("updateSyncStatus(delay?'Saved locally · retry scheduled':'Sending to cloud…')"));
+  assert.ok(appJs.includes('LOCAL.retryDelay=Math.min(LOCAL.retryDelay?LOCAL.retryDelay*2:1000,60000)'));
+  assert.ok(!appJs.includes('setTimeout(flushSync,300000)'));
+  assert.ok(!appJs.includes('setTimeout(flushSync,600000)'));
+});
+
+test('closing or hiding the page still flushes pending sync with keepalive', () => {
   assert.ok(appJs.includes("keepalive:!!opts.keepalive"));
   assert.ok(appJs.includes("flushSync({keepalive:true})"));
   assert.ok(appJs.includes("Date.now()-(LOCAL.lastFlush||0)>60000"));
   assert.ok(appJs.includes("document.addEventListener('visibilitychange'"));
-  assert.ok(appJs.includes('LOCAL.timer=setTimeout(flushSync,300000)'));
 });
 
 test('Phase 5 export groups messages in one pass rather than filtering per conversation', () => {
@@ -279,11 +298,13 @@ test('Phase 5 chat sidebar supports loading additional pages and cancels stale s
 });
 
 test('Phase 5 IndexedDB migration indexes pending local changes', () => {
-  assert.ok(app.includes("indexedDB.open(name,2)"));
-  assert.ok(app.includes("createIndex('pendingSync','pendingSync'"));
+  assert.ok(app.includes("indexedDB.open(name,3)"));
+  assert.ok(app.includes("deleteIndex('pendingSync')"));
   assert.ok(app.includes("function localDirtyAll()"));
   assert.ok(!app.includes('function localAll()'));
-  assert.ok(app.includes("index('pendingSync').getAll(true)"));
+  assert.ok(app.includes("objectStore('conversations').getAll()"));
+  assert.ok(app.includes("filter(c=>c&&c.pendingSync===true)"));
+  assert.ok(!app.includes("getAll(true)"));
 });
 
 test('Phase 5 strips binary image data from cloud sync and restores generated images locally', () => {
@@ -450,4 +471,19 @@ test('search also filters unsynced local chats, document OCR signs in first, str
 test('Deep Research shows a clear message instead of failing when the Gemini video model is selected', () => {
   assert.ok(appJs.includes("if(S.model==='video')throw Error('Deep Research needs GPT-6 Luna or GPT-6 Luna Pro"));
   assert.ok(appJs.includes('Deep Research is on, but it needs GPT-6 Luna or Luna Pro'));
+});
+
+
+test('GPT Image Flare selector exposes only the two requested models and supported controls', () => {
+  assert.ok(appHtml.includes('id="imageModel"'));
+  assert.ok(appHtml.includes('value="gpt-image-2.5-flare"'));
+  assert.ok(appHtml.includes('value="gpt-image-2.6-flare"'));
+  assert.ok(!appHtml.includes('Nano Banana'));
+  assert.ok(!appHtml.includes('gpt-image-2.5-sunburst'));
+  for (const quality of ['low', 'medium', 'high', 'xhigh', 'max', 'auto']) assert.ok(appHtml.includes('value="' + quality + '"'));
+  for (const size of ['1024x1024', '1536x1024', '1024x1536', '2048x2048', '2048x1152', '1152x2048', '3840x2160', '2160x3840']) assert.ok(appHtml.includes('value="' + size + '"'));
+  assert.ok(appJs.includes("provider:'openai',model:S.imageModel,quality:S.imageQuality,width,height"));
+  assert.ok(api.includes("['gpt-image-2.5-flare', 'gpt-image-2.6-flare'].includes(body.imageModel)"));
+  assert.ok(api.includes("['low', 'medium', 'high', 'xhigh', 'max', 'auto'].includes(body.imageQuality)"));
+  assert.ok(api.includes('body.imageResolution'));
 });
