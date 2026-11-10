@@ -15,6 +15,7 @@ const init = () => ready ??= (async () => {
   await sql`create table if not exists profiles(user_id uuid primary key, settings jsonb not null default '{}')`;
   await sql`create table if not exists conversations(id uuid primary key default gen_random_uuid(), user_id uuid not null, title text not null default 'New chat', model text not null default 'luna', pinned boolean not null default false, updated_at timestamptz not null default now())`;
   await sql`create index if not exists conv_user on conversations(user_id, updated_at desc)`;
+  await sql`alter table conversations add column if not exists folder text not null default ''`;
   await sql`create table if not exists messages(seq bigserial primary key, id uuid not null default gen_random_uuid(), conv_id uuid not null references conversations(id) on delete cascade, user_id uuid not null, role text not null check (role in ('user','assistant')), content text not null, model text, attachments jsonb not null default '[]', created_at timestamptz not null default now())`;
   // The sync endpoint uses an idempotent conflict target. Clean up any legacy duplicate
   // IDs per user before adding the matching unique index.
@@ -185,8 +186,9 @@ export default async (req) => {
       if (m === 'GET') return J({ memories: await sql`select id,text,created_at from memories where user_id=${uid} order by created_at desc` });
       if (m === 'POST') {
         const t = clean(body.text, 500).trim(); if (!t) return E('Empty memory');
+        const [existing] = await sql`select id,text,created_at from memories where user_id=${uid} and lower(trim(text))=lower(trim(${t})) limit 1`; if (existing) return J({ memory: existing, duplicate: true });
         const [n] = await sql`select count(*)::int n from memories where user_id=${uid}`; if (n.n >= 200) return E('Memory limit reached (200)');
-        const [r] = await sql`insert into memories(user_id,text) values(${uid},${t}) returning id,text,created_at`; return J({ memory: r });
+        const [r] = await sql`insert into memories(user_id,text) values(${uid},${t}) returning id,text,created_at`; return J({ memory: r, duplicate: false });
       }
       if (m === 'DELETE') { b ? await sql`delete from memories where id=${b} and user_id=${uid}` : await sql`delete from memories where user_id=${uid}`; return J({ ok: true }); }
     }
