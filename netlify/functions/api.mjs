@@ -230,7 +230,7 @@ export default async (req) => {
         const nextCursor = hasMore && last ? { pinned: last.pinned, updated_at: last.updated_at, id: last.id } : null;
         return J({ conversations, nextCursor, hasMore });
       }
-      if (!b && m === 'POST') { const [r] = await sql`insert into conversations(user_id,model,title) values(${uid},${['luna','pro','image'].includes(body.model) ? body.model : 'luna'},${clean(body.title || 'New chat', 80)}) returning id,title,model,pinned,updated_at`; return J({ conversation: r }); }
+      if (!b && m === 'POST') { const [r] = await sql`insert into conversations(user_id,model,title) values(${uid},${['luna','pro','video','image'].includes(body.model) ? body.model : 'luna'},${clean(body.title || 'New chat', 80)}) returning id,title,model,pinned,updated_at`; return J({ conversation: r }); }
       const [own] = await sql`select id from conversations where id=${b} and user_id=${uid}`;
       if (!own) return E('Not found', 404);
       if (!c && m === 'GET') return J({ messages: await sql`select id,role,content,model,attachments,created_at from messages where conv_id=${b} and user_id=${uid} order by seq` });
