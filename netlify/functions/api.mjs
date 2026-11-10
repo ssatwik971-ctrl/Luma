@@ -215,10 +215,7 @@ export default async (req) => {
     if (a === 'conversations') {
       if (!b && m === 'GET') {
         const q = clean(url.searchParams.get('q'), 100).trim();
-        const pattern = '%' + q.replace(/[%_\\]/g, '\\      if (!b && m === 'GET') {
-        const q = '%' + clean(url.searchParams.get('q'), 100).replace(/[%_\\]/g, '\\$&') + '%';
-        return J({ conversations: await sql`select id,title,model,pinned,folder,updated_at from conversations c where user_id=${uid} and (title ilike ${q} or exists(select 1 from messages m where m.conv_id=c.id and m.content ilike ${q})) order by pinned desc, updated_at desc limit 200` });
-      }') + '%';
+        const pattern = '%' + q.replace(/[%_\\]/g, '\\$&') + '%';
         const limitValue = Math.max(1, Math.min(100, Number.parseInt(url.searchParams.get('limit') || '50', 10) || 50));
         let cursor = null;
         try { cursor = url.searchParams.get('cursor') ? JSON.parse(url.searchParams.get('cursor')) : null; } catch { return E('Invalid pagination cursor'); }
