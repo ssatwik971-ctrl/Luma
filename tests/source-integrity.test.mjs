@@ -100,8 +100,8 @@ test('video model is accepted by conversation sync and user settings', () => {
 });
 
 test('Phase 3 audio and video attachment safety is enforced', () => {
-  assert.ok(app.includes("Audio over 20 MB"));
-  assert.ok(app.includes("Video over 20 MB."));
+  assert.ok(app.includes("Audio over 10 MiB (Puter Gemini transcription limit)"));
+  assert.ok(app.includes("Video over 32 MiB."));
   assert.ok(app.includes("Attach one video per message."));
   assert.ok(app.includes("Image over 5 MB for inline model input."));
   assert.ok(app.includes("Use the Transcribe button before sending"));
@@ -142,4 +142,10 @@ test('voice input only submits finalized speech and does not auto-send stale com
   assert.ok(app.includes('VOICE.finalTranscript'));
   assert.ok(app.includes('if(VOICE.mode&&VOICE.finalTranscript.trim()&&!S.busy)'));
   assert.ok(app.includes("$('#in').value=($('#in').value.trim()+' '+VOICE.finalTranscript.trim()).trim()"));
+});
+
+
+test('audio and video attachment limits match documented Puter input ceilings', () => {
+  assert.ok(app.includes('Audio over 10 MiB (Puter Gemini transcription limit)'));
+  assert.ok(app.includes('Video over 32 MiB.'));
 });
