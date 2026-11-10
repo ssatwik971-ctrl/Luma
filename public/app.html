@@ -36,10 +36,10 @@ dialog h3{margin:14px 0 6px}.mem{display:flex;gap:8px;align-items:center;padding
 </style></head><body>
 <aside id="sb"><div style="display:flex;align-items:center;gap:10px;padding:2px 4px"><img src="/logo.svg" width="30" height="30" alt=""><b style="font-size:18px;letter-spacing:.3px">Lumo</b></div><button class="pri" id="nc">+ New chat</button><input id="q" placeholder="Search chats"><div id="list"></div>
 <div class="row"><button id="mem" class="sp">Settings &amp; memory</button></div></aside>
-<main><div id="top"><button id="menu">☰</button><select id="model" style="max-width:220px"><option value="luna">GPT-6 Luna</option><option value="pro">GPT-6 Luna Pro</option><option value="dalle">DALL·E 3 (images)</option></select><span class="sp" style="flex:1"></span><a href="/" style="color:var(--mut);font-size:13px;text-decoration:none">Home</a><span id="who" style="color:var(--mut);font-size:13px"></span></div>
+<main><div id="top"><button id="menu">☰</button><select id="model" style="max-width:220px"><option value="luna">GPT-6 Luna</option><option value="pro">GPT-6 Luna Pro</option><option value="dalle">GPT Image 2 (images)</option></select><span class="sp" style="flex:1"></span><a href="/" style="color:var(--mut);font-size:13px;text-decoration:none">Home</a><span id="who" style="color:var(--mut);font-size:13px"></span></div>
 <div id="msgs"><div class="w" id="mw"></div></div>
 <div id="comp"><div class="box"><div id="chips"></div><textarea id="in" rows="1" placeholder="Message Lumo…"></textarea>
-<div class="row"><input type="file" id="file" hidden multiple><button id="att" title="Attach images or text/code files">📎</button><button id="img" title="Generate an image with DALL·E 3">🖼 Image</button><span class="sp"></span><button class="pri" id="go">Send</button></div></div></div></main>
+<div class="row"><input type="file" id="file" hidden multiple><button id="att" title="Attach images or text/code files">📎</button><button id="img" title="Generate an image with GPT Image 2">🖼 Image</button><span class="sp"></span><button class="pri" id="go">Send</button></div></div></div></main>
 <dialog id="dlg"><h2 style="margin:0">Settings</h2><h3>Theme</h3><select id="th"><option value="dark">Dark</option><option value="light">Light</option></select>
 <h3>Personalization</h3><textarea id="ins" rows="3" placeholder="Custom instructions (how should Lumo respond?)"></textarea>
 <label style="display:flex;gap:8px;margin-top:8px"><input type="checkbox" id="am2" style="width:auto"> Auto-save memories (uses a small extra model call from your Puter credits)</label>
@@ -53,7 +53,7 @@ dialog h3{margin:14px 0 6px}.mem{display:flex;gap:8px;align-items:center;padding
 <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
 <script>
 const $=s=>document.querySelector(s);
-const MODELS={luna:{id:'openai/gpt-6-luna',name:'GPT-6 Luna'},pro:{id:'openai/gpt-6-luna-pro',name:'GPT-6 Luna Pro'},dalle:{id:'openai/dall-e-3',name:'DALL·E 3',img:true}};
+const MODELS={luna:{id:'openai/gpt-6-luna',name:'GPT-6 Luna'},pro:{id:'openai/gpt-5.6-luna-pro',name:'GPT-6 Luna Pro'},dalle:{id:'openai/gpt-image-2',name:'GPT Image 2',img:true}};
 const S={user:null,convs:[],cur:null,msgs:[],mem:[],files:[],busy:false,stop:false,model:'luna',mode:'login',prev:'luna'};
 async function api(p,m='GET',b){const r=await fetch('/api/'+p,{method:m,headers:{'content-type':'application/json','x-requested-with':'app'},body:b?JSON.stringify(b):undefined});const j=await r.json().catch(()=>({}));if(r.status===401&&!p.startsWith('auth/')){location.replace('/login');throw new Error('Signed out')}if(!r.ok)throw new Error(j.error||('HTTP '+r.status));return j}
 function toast(t){const e=$('#toast');e.textContent=t;e.style.display='block';clearTimeout(toast.t);toast.t=setTimeout(()=>e.style.display='none',4500)}
@@ -89,7 +89,7 @@ function bubble(m,i){const d=document.createElement('div');d.className='m '+m.ro
   if(m.role==='user'){const e=document.createElement('button');e.textContent='Edit';e.onclick=()=>editMsg(i);a.append(e)}
   else if(i===S.msgs.length-1){const r=document.createElement('button');r.textContent='Regenerate';r.onclick=()=>regen();a.append(r)}
   d.append(a)}return d}
-function render(){const w=$('#mw');w.innerHTML='';if(!S.msgs.length)w.innerHTML='<div style="text-align:center;margin-top:16vh"><img src="/logo.svg" width="64" height="64" alt=""><h1 style="font-size:34px">What can I help with?</h1><p style="color:var(--mut)">Pick a model above. Image uploads, text files and DALL·E 3 generation are supported.</p></div>';S.msgs.forEach((m,i)=>w.append(bubble(m,i)));$('#msgs').scrollTop=1e9}
+function render(){const w=$('#mw');w.innerHTML='';if(!S.msgs.length)w.innerHTML='<div style="text-align:center;margin-top:16vh"><img src="/logo.svg" width="64" height="64" alt=""><h1 style="font-size:34px">What can I help with?</h1><p style="color:var(--mut)">Pick a model above. Image uploads, text files and GPT Image 2 generation are supported.</p></div>';S.msgs.forEach((m,i)=>w.append(bubble(m,i)));$('#msgs').scrollTop=1e9}
 function chips(){const c=$('#chips');c.innerHTML='';S.files.forEach((f,i)=>{const e=document.createElement('span');e.className='chip';e.textContent=f.name+' ✕';e.style.cursor='pointer';e.onclick=()=>{S.files.splice(i,1);chips()};c.append(e)})}
 
 // ---- composer
@@ -120,7 +120,7 @@ async function gen(){
  busy(true);S.stop=false;const M=MODELS[S.model],w=$('#mw'),d=document.createElement('div');d.className='m assistant';d.innerHTML='<div class="b" style="color:var(--mut)">Thinking…</div>';w.append(d);$('#msgs').scrollTop=1e9;
  const last=S.msgs[S.msgs.length-1];let acc='',atts=[];
  try{
-  if(M.img){const im=await puter.ai.txt2img(last.content,{model:M.id});const u=await toDataUrl(im.src);acc='Generated with DALL·E 3.';atts=[{name:'image.png',type:'image/png',size:u.length,gen:true,dataUrl:u}]}
+  if(M.img){const im=await puter.ai.txt2img(last.content,{model:M.id});const u=await toDataUrl(im.src);acc='Generated with GPT Image 2.';atts=[{name:'image.png',type:'image/png',size:u.length,gen:true,dataUrl:u}]}
   else{
    const mems=S.mem.map(m=>'- '+m.text).join('\n'),ins=S.user.settings?.instructions||'';
    const sys=[ins&&'User instructions:\n'+ins,mems&&'Known facts about the user (use only when relevant):\n'+mems].filter(Boolean).join('\n\n');
