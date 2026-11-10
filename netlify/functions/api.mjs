@@ -129,6 +129,7 @@ export default async (req) => {
       if (typeof body.instructions === 'string') s.instructions = clean(body.instructions, 2000);
       if (typeof body.autoMemory === 'boolean') s.autoMemory = body.autoMemory;
       if (['luna', 'pro', 'image'].includes(body.model)) s.model = body.model;
+      if (['1K', '2K', '4K'].includes(body.imageQuality)) s.imageQuality = body.imageQuality;
       const [u] = await sql`insert into profiles(user_id,settings) values(${uid},${JSON.stringify(s)}::jsonb) on conflict(user_id) do update set settings = profiles.settings || ${JSON.stringify(s)}::jsonb returning settings`;
       return J({ settings: u.settings });
     }
