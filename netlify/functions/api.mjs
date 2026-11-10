@@ -118,7 +118,7 @@ export default async (req) => {
       const convs = [], messages = [];
       for (const c of incoming) {
         if (!c || !UUID.test(c.id || '') || typeof c.title !== 'string' || !Array.isArray(c.messages) || c.messages.length > 100) return E('Invalid conversation in sync batch');
-        convs.push({ id: c.id, title: clean(c.title, 80) || 'New chat', model: ['luna','pro','image'].includes(c.model) ? c.model : 'luna', pinned: !!c.pinned, updated_at: c.updated_at || new Date().toISOString() });
+        convs.push({ id: c.id, title: clean(c.title, 80) || 'New chat', model: ['luna','pro','image'].includes(c.model) ? c.model : 'luna', pinned: !!c.pinned, folder: clean(c.folder,60).trim(), updated_at: c.updated_at || new Date().toISOString() });
         for (const msg of c.messages) {
           messageCount++;
           if (!msg || !UUID.test(msg.id || '') || !['user','assistant'].includes(msg.role) || typeof msg.content !== 'string' || msg.content.length > 100000) return E('Invalid message in sync batch');
@@ -139,9 +139,9 @@ export default async (req) => {
           messages.push({ id: msg.id, conv_id: c.id, role: msg.role, content: msg.content, model: clean(msg.model, 20) || null, attachments: att, created_at: msg.created_at || new Date().toISOString() });
         }
       }
-      await sql`insert into conversations(id,user_id,model,title,pinned,updated_at)
-        select x.id,x.user_id,x.model,x.title,x.pinned,x.updated_at from jsonb_to_recordset(${JSON.stringify(convs.map(c => ({...c,user_id:uid})))}::jsonb) as x(id uuid,user_id uuid,model text,title text,pinned boolean,updated_at timestamptz)
-        on conflict(id) do update set title=excluded.title,model=excluded.model,pinned=excluded.pinned,updated_at=greatest(conversations.updated_at,excluded.updated_at) where conversations.user_id=excluded.user_id`;
+      await sql`insert into conversations(id,user_id,model,title,pinned,folder,updated_at)
+        select x.id,x.user_id,x.model,x.title,x.pinned,x.folder,x.updated_at from jsonb_to_recordset(${JSON.stringify(convs.map(c => ({...c,user_id:uid})))}::jsonb) as x(id uuid,user_id uuid,model text,title text,pinned boolean,folder text,updated_at timestamptz)
+        on conflict(id) do update set title=excluded.title,model=excluded.model,pinned=excluded.pinned,folder=excluded.folder,updated_at=greatest(conversations.updated_at,excluded.updated_at) where conversations.user_id=excluded.user_id`;
       if (messages.length) await sql`insert into messages(id,conv_id,user_id,role,content,model,attachments,created_at)
         select x.id,x.conv_id,${uid},x.role,x.content,x.model,x.attachments,x.created_at
         from jsonb_to_recordset(${JSON.stringify(messages)}::jsonb) as x(id uuid,conv_id uuid,role text,content text,model text,attachments jsonb,created_at timestamptz)
@@ -195,7 +195,7 @@ export default async (req) => {
     if (a === 'conversations') {
       if (!b && m === 'GET') {
         const q = '%' + clean(url.searchParams.get('q'), 100).replace(/[%_\\]/g, '\\$&') + '%';
-        return J({ conversations: await sql`select id,title,model,pinned,updated_at from conversations c where user_id=${uid} and (title ilike ${q} or exists(select 1 from messages m where m.conv_id=c.id and m.content ilike ${q})) order by pinned desc, updated_at desc limit 200` });
+        return J({ conversations: await sql`select id,title,model,pinned,folder,updated_at from conversations c where user_id=${uid} and (title ilike ${q} or exists(select 1 from messages m where m.conv_id=c.id and m.content ilike ${q})) order by pinned desc, updated_at desc limit 200` });
       }
       if (!b && m === 'POST') { const [r] = await sql`insert into conversations(user_id,model,title) values(${uid},${['luna','pro','image'].includes(body.model) ? body.model : 'luna'},${clean(body.title || 'New chat', 80)}) returning id,title,model,pinned,updated_at`; return J({ conversation: r }); }
       const [own] = await sql`select id from conversations where id=${b} and user_id=${uid}`;
@@ -204,6 +204,7 @@ export default async (req) => {
       if (!c && m === 'PATCH') {
         if (typeof body.title === 'string') await sql`update conversations set title=${clean(body.title, 80).trim() || 'New chat'} where id=${b} and user_id=${uid}`;
         if (typeof body.pinned === 'boolean') await sql`update conversations set pinned=${body.pinned} where id=${b} and user_id=${uid}`;
+        if (typeof body.folder === 'string') await sql`update conversations set folder=${clean(body.folder,60).trim()} where id=${b} and user_id=${uid}`;
         return J({ ok: true });
       }
       if (!c && m === 'DELETE') { await sql`delete from conversations where id=${b} and user_id=${uid}`; return J({ ok: true }); }
