@@ -124,6 +124,15 @@ test('audio and video attachment metadata survives cloud sync and direct message
   assert.equal((api.match(/if \(x\.video === true && type\.startsWith\('video\/'\)\) item\.video = true/g)||[]).length, 2);
 });
 
+test('Puter streaming errors are surfaced instead of being mistaken for empty model replies', () => {
+  assert.ok(app.includes("p?.type==='error'"));
+  assert.ok(app.includes("The selected model returned a streaming error."));
+  assert.ok(app.includes('function responseText(r)'));
+});
+test('Artifact Studio normalizes model response content before validating HTML', () => {
+  assert.ok(app.includes('{model:MODELS.pro.id,normalize:true}'));
+  assert.ok(app.includes('let code=responseText(r)'));
+});
 test('usage dashboard includes video model activity and full Puter app API breakdown', () => {
   assert.ok(app.includes('getDetailedAppUsage(puter.appID)'));
   assert.ok(!app.includes('items.slice(0,12)'));
