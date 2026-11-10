@@ -107,7 +107,8 @@ $('#att').onclick=()=>$('#file').click();
 $('#file').onchange=async e=>{for(const f of e.target.files){try{
  if(f.type.startsWith('image/')){if(f.size>8e6)throw Error('Image over 8 MB');S.files.push({name:f.name,type:f.type,size:f.size,dataUrl:await new Promise(r=>{const x=new FileReader;x.onload=()=>r(x.result);x.readAsDataURL(f)})})}
  else if(f.type.startsWith('text/')||/\.(txt|md|csv|json|js|ts|py|java|c|cpp|html|css|xml|yml|yaml|sql|sh|log)$/i.test(f.name)){S.files.push({name:f.name,type:f.type||'text/plain',size:f.size,text:(await f.text()).slice(0,60000)})}
- else if(/\.(pdf|docx|pptx|xlsx)$/i.test(f.name)){if(f.size>10*1024*1024)throw Error(f.name+': document limit is 10 MB');toast('Extracting '+f.name+' with Puter OCR. This uses your Puter account.');const extracted=await puter.ai.img2txt(f,{provider:'mistral',model:'mistral-ocr-latest'});const txt=typeof extracted==='string'?extracted:JSON.stringify(extracted);if(!txt.trim())throw Error('No readable text found in '+f.name);S.files.push({name:f.name,type:'text/plain',size:f.size,text:('[Extracted document: '+f.name+']\n'+txt).slice(0,60000),document:true})}\n else throw Error(f.name+': supported files are images, text/code, PDF, DOCX, PPTX and XLSX')}catch(x){toast(x.message)}}e.target.value='';chips()};
+ else if(/\.(pdf|docx|pptx|xlsx)$/i.test(f.name)){if(f.size>10*1024*1024)throw Error(f.name+': document limit is 10 MB');toast('Extracting '+f.name+' with Puter OCR. This uses your Puter account.');const extracted=await puter.ai.img2txt(f,{provider:'mistral',model:'mistral-ocr-latest'});const txt=typeof extracted==='string'?extracted:JSON.stringify(extracted);if(!txt.trim())throw Error('No readable text found in '+f.name);S.files.push({name:f.name,type:'text/plain',size:f.size,text:('[Extracted document: '+f.name+']\n'+txt).slice(0,60000),document:true})}
+ else throw Error(f.name+': supported files are images, text/code, PDF, DOCX, PPTX and XLSX')}catch(x){toast(x.message)}}e.target.value='';chips()};
 $('#in').oninput=e=>{e.target.style.height='auto';e.target.style.height=e.target.scrollHeight+'px'};
 $('#in').onkeydown=e=>{if(e.key==='Enter'&&!e.shiftKey&&innerWidth>760){e.preventDefault();$('#go').click()}};
 $('#go').onclick=()=>{if(S.busy){S.stop=true;return}const t=$('#in').value.trim();if(!t&&!S.files.length)return;const f=S.files;S.files=[];chips();$('#in').value='';$('#in').style.height='auto';send(t,f)};
@@ -141,7 +142,7 @@ async function gen(){
    else acc=r?.message?.content?.toString?.()||String(r);
   }
   if(!acc&&!atts.length)throw Error('The model returned an empty response.');
-  if(S.research&&!M.img)atts.push({name:'deep-research-report.md',type:'text/markdown',size:acc.length,text:acc});const{message}=await api(`conversations/${S.cur}/messages`,'POST',{role:'assistant',content:acc,model:S.model,attachments:atts});S.msgs.push(message);
+  if(S.research&&!M.img)atts.push({name:'deep-research-report.md',type:'text/markdown',size:acc.length,text:acc});const{message}=await api(`conversations/${S.cur}/messages`,'POST',{role:'assistant',content:acc,model:S.model,attachments:atts});S.msgs.push(message);recordModelActivity(S.model);
   if(!M.img&&S.user.settings?.autoMemory)extractMem(last.content,acc);
   if(VOICE.mode&&!M.img&&acc)speakText(acc);
  }catch(e){const t=errText(e);d.innerHTML='';const x=document.createElement('div');x.className='err';x.textContent='Request failed: '+t+(/fund|credit|balance|usage|limit|quota/i.test(t)?' — this may be a Puter credit/usage limit on your Puter account.':'')+' (No other model was substituted.)';const rb=document.createElement('button');rb.textContent='Retry';rb.onclick=()=>{d.remove();gen()};x.append(document.createElement('br'),rb);d.append(x);busy(false);return}
@@ -167,19 +168,41 @@ async function extractMem(u,a){try{const r=await puter.ai.chat(`From this exchan
 
 // ---- settings & memory
 async function loadMem(){const{memories}=await api('memories');S.mem=memories;const l=$('#ml');l.innerHTML=memories.length?'':'<span style="color:var(--mut)">No memories yet.</span>';memories.forEach(m=>{const d=document.createElement('div');d.className='mem';d.innerHTML='<span></span><button>Delete</button>';d.firstChild.textContent=m.text;d.lastChild.onclick=async()=>{await api('memories/'+m.id,'DELETE');loadMem()};l.append(d)})}
-async function loadStats(){try{const{stats:t}=await api('stats');$('#acct').textContent=S.user.email+' · '+t.chats+' chats · '+t.messages+' messages · '+t.memories+' memories'}catch{$('#acct').textContent=S.user.email}}\nasync function loadUsage(){const box=$('#usageDash');box.textContent='Loading usage…';try{const u=await puter.auth.getMonthlyUsage();const al=u.allowanceInfo||{},app=(u.appTotals||{})[puter.appID]||{},items=Object.entries(u.usage||{}).sort((a,b)=>(b[1].cost||0)-(a[1].cost||0));const money=n=>'
+async function loadStats(){try{const{stats:t}=await api('stats');$('#acct').textContent=S.user.email+' · '+t.chats+' chats · '+t.messages+' messages · '+t.memories+' memories'}catch{$('#acct').textContent=S.user.email}}\n
+// Local activity is a request count only; Puter remains the source of billing/resource figures.
+function usageHistoryKey(){return 'lumo-usage-activity-v1:'+String(S.user?.email||'account')}
+function readUsageHistory(){try{const a=JSON.parse(localStorage.getItem(usageHistoryKey())||'[]');return Array.isArray(a)?a.filter(x=>x&&typeof x.day==='string'&&typeof x.model==='string'):[]}catch{return []}}
+function recordModelActivity(model){try{const a=readUsageHistory();a.push({day:new Date().toISOString().slice(0,10),model,at:Date.now()});localStorage.setItem(usageHistoryKey(),JSON.stringify(a.slice(-2000)))}catch{}}
+function usageCard(label,value,detail=''){const d=document.createElement('div');d.className='usage-card';const b=document.createElement('b');b.textContent=value;const sm=document.createElement('small');sm.textContent=label+(detail?' · '+detail:'');d.append(b,sm);return d}
+function usageSection(title){const h=document.createElement('h3');h.textContent=title;h.style.gridColumn='1/-1';h.style.margin='10px 0 0';return h}
+function usageBar(label,value,max,detail=''){const wrap=document.createElement('div');wrap.style.cssText='grid-column:1/-1;margin:3px 0';const top=document.createElement('div');top.style.cssText='display:flex;justify-content:space-between;gap:8px;font-size:13px;margin-bottom:5px';const l=document.createElement('span');l.textContent=label;const v=document.createElement('span');v.textContent=detail||String(value);top.append(l,v);const track=document.createElement('div');track.style.cssText='height:8px;border-radius:8px;background:var(--bg);overflow:hidden';const fill=document.createElement('div');fill.style.cssText='height:100%;border-radius:8px;background:linear-gradient(90deg,var(--ac),var(--ac2));width:'+Math.max(0,Math.min(100,max?value/max*100:0))+'%';track.append(fill);wrap.append(top,track);return wrap}
+async function loadUsage(){
+ const box=$('#usageDash');box.innerHTML='';box.textContent='Loading usage…';
+ try{
+  if(!puter.auth.isSignedIn())throw Error('Sign in to Puter to view account usage.');
+  const u=await puter.auth.getMonthlyUsage(),al=u.allowanceInfo||{},app=(u.appTotals||{})[puter.appID]||{};
+  const items=Object.entries(u.usage||{}).filter(([,v])=>v&&typeof v==='object').sort((a,b)=>(Number(b[1].cost)||0)-(Number(a[1].cost)||0));
+  const money=n=>'$'+(Number(n||0)/100000000).toFixed(4);
+  box.innerHTML='';
+  box.append(usageCard('Remaining account allowance',Number(al.remaining||0).toLocaleString()),usageCard('Monthly account allowance',Number(al.monthUsageAllowance||0).toLocaleString()),usageCard('Lumo API calls',Number(app.count||0).toLocaleString()),usageCard('Lumo resources used',money(app.total)));
+  box.append(usageSection('Puter-reported API usage'));
+  if(!items.length){const p=document.createElement('p');p.style.cssText='grid-column:1/-1;color:var(--mut);font-size:13px';p.textContent='No API breakdown is available yet. Puter may take about a minute to update it.';box.append(p)}
+  for(const [name,v] of items.slice(0,12)){box.append(usageCard(name,money(v.cost),Number(v.count||0).toLocaleString()+' calls · '+Number(v.units||0).toLocaleString()+' units'))}
+  const history=readUsageHistory(),models=['luna','pro','image'],names={luna:'GPT-6 Luna',pro:'GPT-6 Luna Pro',image:'Nano Banana 2.1'};
+  const totals=Object.fromEntries(models.map(m=>[m,history.filter(x=>x.model===m).length]));
+  box.append(usageSection('Lumo model activity · tracked on this device'));
+  box.append(usageCard('Tracked successful requests',history.length.toLocaleString(),'local activity, not billing data'));
+  for(const m of models)box.append(usageBar(names[m],totals[m],Math.max(1,...Object.values(totals)),totals[m]+' requests'));
+  box.append(usageSection('Recent daily activity · this device'));
+  const days=Array.from({length:7},(_,i)=>{const d=new Date();d.setDate(d.getDate()-(6-i));return d.toISOString().slice(0,10)});
+  const daily=days.map(day=>({day,count:history.filter(x=>x.day===day).length}));
+  for(const x of daily)box.append(usageBar(new Date(x.day+'T12:00:00').toLocaleDateString(undefined,{weekday:'short',month:'short',day:'numeric'}),x.count,Math.max(1,...daily.map(y=>y.count)),x.count+' requests'));
+  const note=document.createElement('p');note.style.cssText='grid-column:1/-1;color:var(--mut);font-size:12px;line-height:1.5';note.textContent='Puter API costs and resource totals are account-reported. Model counts and the 7-day activity chart are stored locally in this browser from successful Lumo responses; they are not token counts, cost estimates, or synced across devices. Local activity begins after this dashboard update.';box.append(note);
+ }catch(e){box.textContent='Could not load Puter usage: '+errText(e)}
+}
 $('#ex').onclick=async()=>{try{const r=await fetch('/api/export',{headers:{'x-requested-with':'app'}});if(!r.ok)throw Error('Export failed');const u=URL.createObjectURL(await r.blob()),a=document.createElement('a');a.href=u;a.download='lumo-export.json';a.click();URL.revokeObjectURL(u)}catch(e){toast(e.message)}};
 $('#dd').onclick=async()=>{if(!confirm('Permanently delete ALL your chats, memories and settings? This cannot be undone.'))return;try{await api('data','DELETE');S.cur=null;S.msgs=[];S.mem=[];render();await Promise.all([loadList(),loadMem(),loadStats()]);toast('Your data was deleted.')}catch(e){toast(e.message)}};
 $('#mem').onclick=()=>{loadStats();loadUsage();const s=S.user.settings||{};$('#th').value=document.documentElement.dataset.theme;$('#ins').value=s.instructions||'';$('#am2').checked=!!s.autoMemory;$('#dlg').showModal()};
-$('#ma').onclick=async()=>{const t=$('#mn').value.trim();if(!t)return;try{await api('memories','POST',{text:t});$('#mn').value='';loadMem()}catch(e){toast(e.message)}};
-$('#mc').onclick=async()=>{if(confirm('Delete ALL memories?')){await api('memories','DELETE');loadMem()}};
-$('#ps').onclick=()=>puter.auth.signIn().then(()=>toast('Signed in to Puter')).catch(()=>toast('Puter sign-in cancelled'));
-$('#sv').onclick=async()=>{try{const r=await api('settings','PUT',{theme:$('#th').value,instructions:$('#ins').value,autoMemory:$('#am2').checked});S.user.settings=r.settings;theme($('#th').value);$('#dlg').close()}catch(e){toast(e.message)}};
-</script></body></html>
-+(Number(n||0)/100000000).toFixed(4);box.innerHTML='';const cards=[['Remaining allowance',Number(al.remaining||0).toLocaleString()],['Monthly allowance',Number(al.monthUsageAllowance||0).toLocaleString()],['Lumo API calls',Number(app.count||0).toLocaleString()],['Lumo resources used',money(app.total)]];cards.forEach(([k,v])=>{const d=document.createElement('div');d.className='usage-card';const b=document.createElement('b');b.textContent=v;const sm=document.createElement('small');sm.textContent=k;d.append(b,sm);box.append(d)});items.forEach(([name,v])=>{const d=document.createElement('div');d.className='usage-card';const b=document.createElement('b');b.textContent=money(v.cost);const sm=document.createElement('small');sm.textContent=name+' · '+(v.count||0)+' calls';d.append(b,sm);box.append(d)})}catch(e){box.textContent='Could not load Puter usage: '+errText(e)}}\n$('#usageRefresh').onclick=loadUsage;
-$('#ex').onclick=async()=>{try{const r=await fetch('/api/export',{headers:{'x-requested-with':'app'}});if(!r.ok)throw Error('Export failed');const u=URL.createObjectURL(await r.blob()),a=document.createElement('a');a.href=u;a.download='lumo-export.json';a.click();URL.revokeObjectURL(u)}catch(e){toast(e.message)}};
-$('#dd').onclick=async()=>{if(!confirm('Permanently delete ALL your chats, memories and settings? This cannot be undone.'))return;try{await api('data','DELETE');S.cur=null;S.msgs=[];S.mem=[];render();await Promise.all([loadList(),loadMem(),loadStats()]);toast('Your data was deleted.')}catch(e){toast(e.message)}};
-$('#mem').onclick=()=>{loadStats();const s=S.user.settings||{};$('#th').value=document.documentElement.dataset.theme;$('#ins').value=s.instructions||'';$('#am2').checked=!!s.autoMemory;$('#dlg').showModal()};
 $('#ma').onclick=async()=>{const t=$('#mn').value.trim();if(!t)return;try{await api('memories','POST',{text:t});$('#mn').value='';loadMem()}catch(e){toast(e.message)}};
 $('#mc').onclick=async()=>{if(confirm('Delete ALL memories?')){await api('memories','DELETE');loadMem()}};
 $('#ps').onclick=()=>puter.auth.signIn().then(()=>toast('Signed in to Puter')).catch(()=>toast('Puter sign-in cancelled'));
