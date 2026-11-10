@@ -39,10 +39,10 @@ dialog h3{margin:14px 0 6px}.mem{display:flex;gap:8px;align-items:center;padding
 </style></head><body>
 <aside id="sb"><div style="display:flex;align-items:center;gap:10px;padding:2px 4px"><img src="/logo.svg" width="30" height="30" alt=""><b style="font-size:18px;letter-spacing:.3px">Lumo</b></div><button class="pri" id="nc">+ New chat</button><input id="q" placeholder="Search chats"><div id="list"></div>
 <div class="row"><button id="mem" class="sp">Settings &amp; memory</button></div></aside>
-<main><div id="top"><button id="menu">☰</button><select id="model" style="max-width:220px"><option value="luna">GPT-6 Luna</option><option value="pro">GPT-6 Luna Pro</option><option value="image">FLUX.1 Schnell (images)</option></select><span class="sp" style="flex:1"></span><a href="/" style="color:var(--mut);font-size:13px;text-decoration:none">Home</a><span id="who" style="color:var(--mut);font-size:13px"></span></div>
+<main><div id="top"><button id="menu">☰</button><select id="model" style="max-width:220px"><option value="luna">GPT-6 Luna</option><option value="pro">GPT-6 Luna Pro</option><option value="image">Nano Banana 2.1 (images)</option></select><select id="imageQuality" aria-label="Image resolution" title="Image resolution" style="width:auto;display:none"><option value="1K">1K</option><option value="2K" selected>2K</option><option value="4K">4K</option></select><span class="sp" style="flex:1"></span><a href="/" style="color:var(--mut);font-size:13px;text-decoration:none">Home</a><span id="who" style="color:var(--mut);font-size:13px"></span></div>
 <div id="msgs"><div class="w" id="mw"></div></div>
 <div id="comp"><div class="box"><div id="chips"></div><textarea id="in" rows="1" placeholder="Message Lumo…"></textarea>
-<div class="toolrow"><button id="research" title="Search the web and prepare a cited research report">🔎 Deep Research</button><button id="artifact" title="Create an interactive HTML artifact">◇ Artifact Studio</button><button id="mic" title="Dictate a message">🎙 Voice</button><button id="speak" title="Read the latest answer aloud">🔊 Read aloud</button><button id="voiceMode" title="Enable hands-free voice conversation">◎ Voice mode</button></div><div class="row"><input type="file" id="file" hidden multiple><button id="att" title="Attach images or text/code files">📎</button><button id="img" title="Generate an image with FLUX.1 Schnell">🖼 Image</button><span class="sp"></span><button class="pri" id="go">Send</button></div></div></div></main>
+<div class="toolrow"><button id="research" title="Search the web and prepare a cited research report">🔎 Deep Research</button><button id="artifact" title="Create an interactive HTML artifact">◇ Artifact Studio</button><button id="mic" title="Dictate a message">🎙 Voice</button><button id="speak" title="Read the latest answer aloud">🔊 Read aloud</button><button id="voiceMode" title="Enable hands-free voice conversation">◎ Voice mode</button></div><div class="row"><input type="file" id="file" hidden multiple><button id="att" title="Attach images or text/code files">📎</button><button id="img" title="Generate an image with Gemini Nano Banana 2.1">🖼 Image</button><span class="sp"></span><button class="pri" id="go">Send</button></div></div></div></main>
 <dialog id="dlg"><h2 style="margin:0">Settings</h2><h3>Theme</h3><select id="th"><option value="dark">Dark</option><option value="light">Light</option></select>
 <h3>Personalization</h3><textarea id="ins" rows="3" placeholder="Custom instructions (how should Lumo respond?)"></textarea>
 <label style="display:flex;gap:8px;margin-top:8px"><input type="checkbox" id="am2" style="width:auto"> Auto-save memories (uses a small extra model call from your Puter credits)</label>
@@ -57,9 +57,9 @@ dialog h3{margin:14px 0 6px}.mem{display:flex;gap:8px;align-items:center;padding
 <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
 <script>
 const $=s=>document.querySelector(s);
-const MODELS={luna:{id:'openai/gpt-6-luna',name:'GPT-6 Luna'},pro:{id:'openai/gpt-6-luna-pro',name:'GPT-6 Luna Pro'},image:{id:'black-forest-labs/flux-schnell',name:'FLUX.1 Schnell',img:true}};
+const MODELS={luna:{id:'openai/gpt-6-luna',name:'GPT-6 Luna'},pro:{id:'openai/gpt-6-luna-pro',name:'GPT-6 Luna Pro'},image:{id:'gemini-nano-banana-2.1',name:'Gemini Nano Banana 2.1',img:true}};
 const VOICE={recognition:null,mode:false};
-const S={user:null,convs:[],cur:null,msgs:[],mem:[],files:[],busy:false,stop:false,model:'luna',mode:'login',prev:'luna'};
+const S={user:null,convs:[],cur:null,msgs:[],mem:[],files:[],busy:false,stop:false,model:'luna',mode:'login',prev:'luna',imageQuality:'2K'};
 async function api(p,m='GET',b){const r=await fetch('/api/'+p,{method:m,headers:{'content-type':'application/json','x-requested-with':'app'},body:b?JSON.stringify(b):undefined});const j=await r.json().catch(()=>({}));if(r.status===401&&!p.startsWith('auth/')){location.replace('/login');throw new Error('Signed out')}if(!r.ok)throw new Error(j.error||('HTTP '+r.status));return j}
 function toast(t){const e=$('#toast');e.textContent=t;e.style.display='block';clearTimeout(toast.t);toast.t=setTimeout(()=>e.style.display='none',4500)}
 const errText=e=>e?.error?.message||e?.message||(typeof e==='string'?e:JSON.stringify(e));
@@ -68,7 +68,8 @@ theme(localStorage.getItem('theme')||'dark');
 
 // ---- session
 $('#lo').onclick=async()=>{try{await api('auth/logout','POST',{})}catch{}location.replace('/login')};
-async function boot(u){S.user=u;$('#who').textContent=u.email;const s=u.settings||{};if(s.theme)theme(s.theme);S.model=s.model==='dalle'?'image':(s.model||'luna');$('#model').value=S.model;$('#img').classList.toggle('on2',S.model==='image');await Promise.all([loadList(),loadMem()])}
+function syncImageControls(){const on=S.model==='image';$('#imageQuality').style.display=on?'inline-block':'none';$('#img').classList.toggle('on2',on)}
+async function boot(u){S.user=u;$('#who').textContent=u.email;const s=u.settings||{};if(s.theme)theme(s.theme);S.model=s.model==='dalle'?'image':(s.model||'luna');S.imageQuality=['1K','2K','4K'].includes(s.imageQuality)?s.imageQuality:'2K';$('#model').value=S.model;$('#imageQuality').value=S.imageQuality;syncImageControls();await Promise.all([loadList(),loadMem()])}
 (async()=>{try{const{user}=await api('auth/me');if(!user){location.replace('/login');return}await boot(user)}catch(e){if(e.message!=='Signed out')toast(e.message)}})();
 
 // ---- conversations
@@ -99,8 +100,9 @@ function render(){const w=$('#mw');w.innerHTML='';if(!S.msgs.length)w.innerHTML=
 function chips(){const c=$('#chips');c.innerHTML='';S.files.forEach((f,i)=>{const e=document.createElement('span');e.className='chip';e.textContent=f.name+' ✕';e.style.cursor='pointer';e.onclick=()=>{S.files.splice(i,1);chips()};c.append(e)})}
 
 // ---- composer
-$('#model').onchange=e=>{S.model=e.target.value;if(S.model!=='image')S.prev=S.model;$('#img').classList.toggle('on2',S.model==='image');api('settings','PUT',{model:S.model}).catch(()=>{})};
-$('#img').onclick=()=>{if(S.model==='image'){S.model=S.prev||'luna';}else{S.prev=S.model;S.model='image'}$('#model').value=S.model;$('#img').classList.toggle('on2',S.model==='image');api('settings','PUT',{model:S.model}).catch(()=>{})};
+$('#model').onchange=e=>{S.model=e.target.value;if(S.model!=='image')S.prev=S.model;syncImageControls();api('settings','PUT',{model:S.model}).catch(()=>{})};
+$('#imageQuality').onchange=e=>{S.imageQuality=e.target.value;api('settings','PUT',{imageQuality:S.imageQuality}).catch(()=>{})};
+$('#img').onclick=()=>{if(S.model==='image'){S.model=S.prev||'luna';}else{S.prev=S.model;S.model='image'}$('#model').value=S.model;syncImageControls();api('settings','PUT',{model:S.model}).catch(()=>{})};
 $('#att').onclick=()=>$('#file').click();
 $('#file').onchange=async e=>{for(const f of e.target.files){try{
  if(f.type.startsWith('image/')){if(f.size>8e6)throw Error('Image over 8 MB');S.files.push({name:f.name,type:f.type,size:f.size,dataUrl:await new Promise(r=>{const x=new FileReader;x.onload=()=>r(x.result);x.readAsDataURL(f)})})}
@@ -126,7 +128,7 @@ async function gen(){
  busy(true);S.stop=false;const M=MODELS[S.model],w=$('#mw'),d=document.createElement('div');d.className='m assistant';d.innerHTML='<div class="b" style="color:var(--mut)">Thinking…</div>';w.append(d);$('#msgs').scrollTop=1e9;
  const last=S.msgs[S.msgs.length-1];let acc='',atts=[];
  try{
-  if(M.img){const im=await puter.ai.txt2img(last.content,{model:M.id,steps:4});const u=await toDataUrl(im.src);acc='Generated with FLUX.1 Schnell.';atts=[{name:'image.png',type:'image/png',size:u.length,gen:true,dataUrl:u}]}
+  if(M.img){const im=await puter.ai.txt2img(last.content,{model:M.id,quality:S.imageQuality});const u=await toDataUrl(im.src);acc='Generated with Gemini Nano Banana 2.1 · '+S.imageQuality+'.';atts=[{name:'image.png',type:'image/png',size:u.length,gen:true,dataUrl:u}]}
   else{
    const mems=S.mem.map(m=>'- '+m.text).join('\n'),ins=S.user.settings?.instructions||'';
    const sys=[ins&&'User instructions:\n'+ins,mems&&'Known facts about the user (use only when relevant):\n'+mems].filter(Boolean).join('\n\n');
