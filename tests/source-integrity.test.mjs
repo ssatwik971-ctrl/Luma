@@ -112,3 +112,16 @@ test('video analysis requires an explicit video-capable model selection', () => 
   assert.ok(app.includes("google/gemini-2.5-flash"));
   assert.ok(app.includes("No automatic model switch is made."));
 });
+
+
+test('audio and video attachment metadata survives cloud sync and direct message storage', () => {
+  assert.ok(api.includes("if (x.audio === true && type.startsWith('audio/')) item.audio = true"));
+  assert.ok(api.includes("if (x.video === true && type.startsWith('video/')) item.video = true"));
+  assert.equal((api.match(/if \(x\.audio === true && type\.startsWith\('audio\/'\)\) item\.audio = true/g)||[]).length, 2);
+  assert.equal((api.match(/if \(x\.video === true && type\.startsWith\('video\/'\)\) item\.video = true/g)||[]).length, 2);
+});
+
+test('usage dashboard includes video model activity', () => {
+  assert.ok(app.includes("models=['luna','pro','video','image']"));
+  assert.ok(app.includes("video:'Gemini 2.5 Flash (video)'"));
+});
