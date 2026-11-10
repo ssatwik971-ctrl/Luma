@@ -166,7 +166,7 @@ test('Phase 4 selects recent conversation context plus relevant older turns', ()
 });
 
 test('Phase 4 application and API scripts both parse after context integration', () => {
-  const scriptOpen = app.indexOf('<script>\\nconst $=');
+  const scriptOpen = app.indexOf('<script>\nconst $=');
   const scriptClose = app.indexOf('</script>', scriptOpen);
   assert.doesNotThrow(() => new vm.Script(app.slice(scriptOpen + 8, scriptClose)));
   const result = spawnSync(process.execPath, ['--check', 'netlify/functions/api.mjs'], { encoding: 'utf8' });
