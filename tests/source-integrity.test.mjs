@@ -5,18 +5,20 @@ import { spawnSync } from 'node:child_process';
 import vm from 'node:vm';
 
 const api = await readFile(new URL('../netlify/functions/api.mjs', import.meta.url), 'utf8');
-const app = await readFile(new URL('../public/app.html', import.meta.url), 'utf8');
+const appHtml = await readFile(new URL('../public/app.html', import.meta.url), 'utf8');
+const appJs = await readFile(new URL('../public/app.js', import.meta.url), 'utf8');
+const appCss = await readFile(new URL('../public/app.css', import.meta.url), 'utf8');
+const app = appHtml + '\n' + appJs + '\n' + appCss;
 
 test('Netlify API function parses successfully', () => {
   const result = spawnSync(process.execPath, ['--check', 'netlify/functions/api.mjs'], { encoding: 'utf8' });
   assert.equal(result.status, 0, result.stderr || result.stdout);
 });
 
-test('main inline browser script parses successfully', () => {
-  const open = app.indexOf('<script>\nconst $=');
-  const close = app.indexOf('</script>', open);
-  assert.ok(open >= 0 && close > open, 'Expected an inline application script');
-  assert.doesNotThrow(() => new vm.Script(app.slice(open + 8, close)));
+test('modular browser application script parses successfully', () => {
+  assert.ok(appHtml.includes('href="/app.css"'));
+  assert.ok(appHtml.includes('src="/app.js"'));
+  assert.doesNotThrow(() => new vm.Script(appJs));
 });
 
 test('message sync has a matching unique conflict target', () => {
@@ -141,7 +143,7 @@ test('audio transcription sends a base ISO language code to Puter', () => {
 test('voice input only submits finalized speech and does not auto-send stale composer text', () => {
   assert.ok(app.includes('VOICE.finalTranscript'));
   assert.ok(app.includes('if(VOICE.mode&&VOICE.finalTranscript.trim()&&!S.busy)'));
-  assert.ok(app.includes("$('#in').value=($('#in').value.trim()+' '+VOICE.finalTranscript.trim()).trim()"));
+  assert.ok(appJs.includes("$('#in').value=($('#in').value.trim()+' '+VOICE.finalTranscript.trim()).trim()"));
 });
 
 
@@ -166,9 +168,7 @@ test('Phase 4 selects recent conversation context plus relevant older turns', ()
 });
 
 test('Phase 4 application and API scripts both parse after context integration', () => {
-  const scriptOpen = app.indexOf('<script>\nconst $=');
-  const scriptClose = app.indexOf('</script>', scriptOpen);
-  assert.doesNotThrow(() => new vm.Script(app.slice(scriptOpen + 8, scriptClose)));
+  assert.doesNotThrow(() => new vm.Script(appJs));
   const result = spawnSync(process.execPath, ['--check', 'netlify/functions/api.mjs'], { encoding: 'utf8' });
   assert.equal(result.status, 0, result.stderr || result.stdout);
 });
@@ -333,4 +333,26 @@ test('Phase 7: health diagnostics expose service status without returning secret
   assert.ok(health.includes('identity: await identityInfo(origin)'));
   assert.ok(health.includes('database: { ok: false }'));
   assert.ok(!/process\.env|password|secret|token/i.test(health));
+});
+
+test('video attachment metadata accepts the frontend 32 MiB ceiling in both API paths', () => {
+  assert.ok(api.includes("type.startsWith('video/') ? 32 * 1024 * 1024"));
+  assert.equal((api.match(/attachmentLimit\\(type, x\\.gen === true\\)/g)||[]).length, 2);
+  assert.ok(api.includes("type.startsWith('audio/') ? 10 * 1024 * 1024"));
+  assert.ok(api.includes("type.startsWith('image/') ? 5 * 1024 * 1024"));
+});
+
+test('memory retrieval expands related concepts locally without another AI request', () => {
+  assert.ok(appJs.includes('const MEMORY_CONCEPTS=['));
+  assert.ok(appJs.includes('function memoryStem(word)'));
+  assert.ok(appJs.includes('const related=MEMORY_CONCEPTS.filter'));
+  assert.ok(appJs.includes('function selectRelevantMemories(query)'));
+  assert.ok(appJs.includes('S.user.settings?.useMemories===false'));
+});
+
+test('application styling and behavior are split into dedicated assets', () => {
+  assert.ok(appHtml.includes('href="/app.css"'));
+  assert.ok(appHtml.includes('src="/app.js"'));
+  assert.ok(appCss.length > 1000);
+  assert.ok(appJs.length > 1000);
 });
