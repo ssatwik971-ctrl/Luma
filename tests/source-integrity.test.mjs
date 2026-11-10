@@ -67,3 +67,19 @@ test('saved memories can be edited with duplicate protection', () => {
   assert.ok(api.includes('and id<>${b} limit 1'));
   assert.ok(app.includes('title="Edit memory"'));
 });
+
+test('Phase 3 voice controls support selectable languages and stop playback', () => {
+  assert.ok(app.includes('id="voiceLang"'));
+  assert.ok(app.includes('id="stopSpeak"'));
+  assert.ok(app.includes("function voiceLanguage()"));
+  assert.ok(app.includes("rec.lang=voiceLanguage()"));
+  assert.ok(app.includes("utter.lang=voiceLanguage()"));
+  assert.ok(app.includes("speechSynthesis.cancel()"));
+});
+
+test('locally stored image inputs are restored when reopening a synced conversation', () => {
+  assert.ok(app.includes('localById.get(m.id)'));
+  assert.ok(app.includes('_imgs:local._imgs||[]'));
+  assert.ok(app.includes('_localOnlyImages'));
+  assert.ok(app.includes('Attached image preview (stored on this device)'));
+});
