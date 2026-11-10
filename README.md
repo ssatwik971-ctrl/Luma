@@ -52,10 +52,12 @@
 
 ## Phase 2 · Advanced AI chat (in progress)
 - **Smart model routing** can be enabled from the composer. It selects Luna Pro for prompts that look complex or long, and Luna for simpler prompts. Image generation remains on the selected image model.
-- **Multi-model Arena** sends the same prompt and conversation context to Luna and Luna Pro in parallel, then displays both answers for comparison. This makes two model requests and can use more Puter resources.
 - **Branch here** creates a separate conversation from the selected message; the original conversation remains unchanged.
 - **Regenerate with another model** lets the latest assistant response be retried with Luna or Luna Pro.
 - **Conversation folders** can be assigned from the folder icon in the sidebar. Folder metadata syncs with the conversation.
 - **Memory deduplication** avoids inserting an exact case-insensitive duplicate memory.
 
 Phase 2 features are being implemented on the development branch and still require browser and live-service testing before production use.
+
+
+**Cost-conscious design:** Multi-model Arena was removed because generating two answers to one prompt would consume two Puter model requests. Lumo now uses one selected/routed model request per response.
