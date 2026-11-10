@@ -127,7 +127,7 @@ export default async (req) => {
             if (!name || size < 0 || size > 10 * 1024 * 1024) return E('Invalid attachment name or size');
             const item = { name, type, size };
             if (typeof x.text === 'string') { if (x.text.length > 60000) return E('Attachment text too long'); totalText += x.text.length; if (totalText > 180000) return E('Combined attachment text too long'); item.text = x.text; }
-            if (x.gen === true) { if (typeof x.dataUrl !== 'string' || x.dataUrl.length > 8 * 1024 * 1024 || !/^data:image\\/(png|jpeg|webp);base64,/i.test(x.dataUrl)) return E('Invalid generated image attachment'); item.gen = true; item.dataUrl = x.dataUrl; }
+            if (x.gen === true) { if (typeof x.dataUrl !== 'string' || x.dataUrl.length > 8 * 1024 * 1024 || !/^data:image\/(png|jpeg|webp);base64,/i.test(x.dataUrl)) return E('Invalid generated image attachment'); item.gen = true; item.dataUrl = x.dataUrl; }
             att.push(item);
           }
           messages.push({ id: msg.id, conv_id: c.id, role: msg.role, content: msg.content, model: clean(msg.model, 20) || null, attachments: att, created_at: msg.created_at || new Date().toISOString() });
@@ -214,7 +214,7 @@ export default async (req) => {
             item.text = x.text;
           }
           if (x.gen === true) {
-            if (typeof x.dataUrl !== 'string' || x.dataUrl.length > 8 * 1024 * 1024 || !/^data:image\\/(png|jpeg|webp);base64,/i.test(x.dataUrl)) return E('Invalid generated image attachment');
+            if (typeof x.dataUrl !== 'string' || x.dataUrl.length > 8 * 1024 * 1024 || !/^data:image\/(png|jpeg|webp);base64,/i.test(x.dataUrl)) return E('Invalid generated image attachment');
             item.gen = true; item.dataUrl = x.dataUrl;
           }
           att.push(item);
