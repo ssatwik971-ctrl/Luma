@@ -78,5 +78,5 @@ Phase 2 features are being implemented on the development branch and still requi
 
 ### Phase 3 · Audio and video input
 - Audio files can be attached and explicitly transcribed with Puter.js `puter.ai.speech2txt()`. Transcription is user-triggered, not automatic; the transcript is inserted into the composer for review before sending. The transcription request uses Puter resources and may incur usage.
-- Video files can be attached (up to 20 MB) and analyzed with the explicit **Gemini 2.5 Flash (video)** model option. Lumo never silently switches models; select that model before sending a video. Video analysis is one chat request, but video-capable model support and billing depend on Puter's current service availability.
+- Video files can be attached (up to 20 MB, one per message) and analyzed with the explicit **Gemini 2.5 Flash (video)** model option. Lumo never silently switches models; select that model before sending a video. Video analysis is one chat request, but video-capable model support and billing depend on Puter's current service availability. Images are capped at 5 MB for inline model input.
 - Video files are retained in the current local conversation only; the raw video is not included in cloud sync. Reopen the chat on the same device to access locally stored media where the browser retains it.
