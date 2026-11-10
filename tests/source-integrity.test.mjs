@@ -464,3 +464,18 @@ test('Deep Research shows a clear message instead of failing when the Gemini vid
   assert.ok(appJs.includes("if(S.model==='video')throw Error('Deep Research needs GPT-6 Luna or GPT-6 Luna Pro"));
   assert.ok(appJs.includes('Deep Research is on, but it needs GPT-6 Luna or Luna Pro'));
 });
+
+
+test('GPT Image Flare selector exposes only the two requested models and supported controls', () => {
+  assert.ok(appHtml.includes('id="imageModel"'));
+  assert.ok(appHtml.includes('value="gpt-image-2.5-flare"'));
+  assert.ok(appHtml.includes('value="gpt-image-2.6-flare"'));
+  assert.ok(!appHtml.includes('Nano Banana'));
+  assert.ok(!appHtml.includes('gpt-image-2.5-sunburst'));
+  for (const quality of ['low', 'medium', 'high', 'xhigh', 'max', 'auto']) assert.ok(appHtml.includes('value="' + quality + '"'));
+  for (const size of ['1024x1024', '1536x1024', '1024x1536', '2048x2048', '2048x1152', '1152x2048', '3840x2160', '2160x3840']) assert.ok(appHtml.includes('value="' + size + '"'));
+  assert.ok(appJs.includes("provider:'openai',model:S.imageModel,quality:S.imageQuality,width,height"));
+  assert.ok(api.includes("['gpt-image-2.5-flare', 'gpt-image-2.6-flare'].includes(body.imageModel)"));
+  assert.ok(api.includes("['low', 'medium', 'high', 'xhigh', 'max', 'auto'].includes(body.imageQuality)"));
+  assert.ok(api.includes('body.imageResolution'));
+});
