@@ -273,3 +273,64 @@ test('Phase 6 final polish covers readable messages, touch controls and composer
   assert.ok(app.includes('.m.assistant .b table'));
   assert.ok(app.includes('#box:focus-within') || app.includes('.box:focus-within'));
 });
+
+test('Phase 7: every non-GET API request requires the app marker and verified origin', () => {
+  assert.ok(api.includes("if (m !== 'GET')"));
+  assert.ok(api.includes("req.headers.get('x-requested-with') !== 'app'"));
+  assert.ok(api.includes('verifyRequestOrigin(req)'));
+  assert.ok(api.includes("return E('Forbidden', 403)"));
+});
+
+test('Phase 7: private API routes authenticate before resolving user-scoped data', () => {
+  const authGate = api.indexOf('const iu = await getUser()');
+  const uid = api.indexOf('const uid = iu.id', authGate);
+  const route = api.indexOf("if (a === 'sync' && m === 'POST')", uid);
+  assert.ok(authGate >= 0 && uid > authGate && route > uid);
+  assert.ok(api.includes('where user_id=${uid}'));
+  assert.ok(api.includes('where id=${b} and user_id=${uid}'));
+  assert.ok(api.includes('join conversations c on c.id=x.conv_id and c.user_id=${uid}'));
+});
+
+test('Phase 7: authenticated mutations and authentication attempts are rate-limited', () => {
+  assert.ok(api.includes("limit('u' + uid, 240)"));
+  assert.ok(api.includes("limit('a' + ip, 20)"));
+  assert.ok(api.includes("return E('Too many requests', 429)"));
+  assert.ok(api.includes("return E('Too many attempts, try again in a minute', 429)"));
+});
+
+test('Phase 7: sync batches and message attachments enforce bounded input sizes', () => {
+  assert.ok(api.includes('incoming.length > 50'));
+  assert.ok(api.includes('c.messages.length > 100'));
+  assert.ok(api.includes('messageCount > 500'));
+  assert.ok(api.includes('totalChars > 1000000'));
+  assert.ok(api.includes('raw.length > 10'));
+  assert.ok(api.includes('size > 10 * 1024 * 1024'));
+  assert.ok(api.includes('totalText > 180000'));
+});
+
+test('Phase 7: pagination cursor is validated and result size is capped', () => {
+  assert.ok(api.includes("return E('Invalid pagination cursor')"));
+  assert.ok(api.includes('Math.min(100'));
+  assert.ok(api.includes('limit ${limitValue + 1}'));
+  assert.ok(api.includes('nextCursor, hasMore'));
+});
+
+test('Phase 7: Netlify deployment config includes baseline security headers and CI runs tests', async () => {
+  const config = await readFile(new URL('../netlify.toml', import.meta.url), 'utf8');
+  const workflow = await readFile(new URL('../.github/workflows/ci.yml', import.meta.url), 'utf8');
+  assert.ok(config.includes('X-Content-Type-Options = "nosniff"'));
+  assert.ok(config.includes('X-Frame-Options = "DENY"'));
+  assert.ok(config.includes('Referrer-Policy = "strict-origin-when-cross-origin"'));
+  assert.ok(workflow.includes('node-version: 20'));
+  assert.ok(workflow.includes('run: npm test'));
+  assert.ok(workflow.includes('feature/deep-research-artifact-voice'));
+});
+
+test('Phase 7: health diagnostics expose service status without returning secrets', () => {
+  const start = api.indexOf('async function health(origin)');
+  const end = api.indexOf('// Auth is delegated', start);
+  const health = api.slice(start, end);
+  assert.ok(health.includes('identity: await identityInfo(origin)'));
+  assert.ok(health.includes('database: { ok: false }'));
+  assert.ok(!/process\\.env|password|secret|token/i.test(health));
+});
