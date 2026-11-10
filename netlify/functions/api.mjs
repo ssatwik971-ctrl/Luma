@@ -16,6 +16,10 @@ const init = () => ready ??= (async () => {
   await sql`create table if not exists conversations(id uuid primary key default gen_random_uuid(), user_id uuid not null, title text not null default 'New chat', model text not null default 'luna', pinned boolean not null default false, updated_at timestamptz not null default now())`;
   await sql`create index if not exists conv_user on conversations(user_id, updated_at desc)`;
   await sql`create table if not exists messages(seq bigserial primary key, id uuid not null default gen_random_uuid(), conv_id uuid not null references conversations(id) on delete cascade, user_id uuid not null, role text not null check (role in ('user','assistant')), content text not null, model text, attachments jsonb not null default '[]', created_at timestamptz not null default now())`;
+  // The sync endpoint uses an idempotent conflict target. Clean up any legacy duplicate
+  // IDs per user before adding the matching unique index.
+  await sql`delete from messages a using messages b where a.user_id=b.user_id and a.id=b.id and a.seq>b.seq`;
+  await sql`create unique index if not exists messages_id_user_unique on messages(id,user_id)`;
   await sql`create index if not exists msg_conv on messages(conv_id, seq)`;
   await sql`create table if not exists memories(id uuid primary key default gen_random_uuid(), user_id uuid not null, text text not null, created_at timestamptz not null default now())`;
   await sql`create table if not exists hits(k text not null, w bigint not null, n int not null default 0, primary key(k, w))`;
@@ -145,7 +149,7 @@ export default async (req) => {
         select x.id,x.conv_id,${uid},x.role,x.content,x.model,x.attachments,x.created_at
         from jsonb_to_recordset(${JSON.stringify(messages)}::jsonb) as x(id uuid,conv_id uuid,role text,content text,model text,attachments jsonb,created_at timestamptz)
         join conversations c on c.id=x.conv_id and c.user_id=${uid}
-        on conflict(id) do nothing`;
+        on conflict(id,user_id) do nothing`;
       return J({ ok: true, conversations: convs.length, messages: messages.length });
     }
     if (a === 'stats' && m === 'GET') {
