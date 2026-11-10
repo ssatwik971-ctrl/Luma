@@ -30,6 +30,7 @@
 ## Known limits
 - Document OCR supports PDF, DOCX, PPTX and XLSX up to 10 MB per file in the app. OCR is a separate Puter AI operation and may consume the user's Puter resources; scanned or unusually formatted documents may extract imperfectly. Extracted text is limited to 60,000 characters per file and 180,000 per message.
 - Uploaded image bytes remain local to the device; same-device cached image inputs are restored when reopening a synced conversation. They are not uploaded to cloud history or available on other devices.
+- Generated-image bytes are also kept in device-local IndexedDB. Cloud sync sends attachment metadata only, reducing database storage and repeated upload payloads; the generated image is restored on the same device when its conversation is reopened. Other devices see the attachment metadata, not the image bytes.
 - Deep Research performs three focused web-search stages and a synthesis pass. Actual search availability and citations depend on Puter's model/tool access; users should verify important claims against linked primary sources.
 - Usage dashboard values come from `puter.auth.getMonthlyUsage()`. Resource amounts are Puter's microcent units; the dashboard converts them to USD and does not forecast charges.
 - Identity does not work under `netlify dev` (test on a deploy). Live end-to-end tests require the site's Netlify Identity and Database configuration.
