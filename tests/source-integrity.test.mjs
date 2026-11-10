@@ -125,3 +125,21 @@ test('usage dashboard includes video model activity', () => {
   assert.ok(app.includes("models=['luna','pro','video','image']"));
   assert.ok(app.includes("video:'Gemini 2.5 Flash (video)'"));
 });
+
+
+test('reopening a synced conversation restores same-device video File objects', () => {
+  assert.ok(app.includes('_video:local._video||null'));
+  assert.ok(app.includes('_localOnlyVideo:!!local._video'));
+  assert.ok(app.includes('Video file is available on this device only.'));
+});
+
+test('audio transcription sends a base ISO language code to Puter', () => {
+  assert.ok(app.includes("language:voiceLanguage().split('-')[0]"));
+  assert.ok(app.includes("puter.ai.speech2txt(f.file"));
+});
+
+test('voice input only submits finalized speech and does not auto-send stale composer text', () => {
+  assert.ok(app.includes('VOICE.finalTranscript'));
+  assert.ok(app.includes('if(VOICE.mode&&VOICE.finalTranscript.trim()&&!S.busy)'));
+  assert.ok(app.includes("$('#in').value=($('#in').value.trim()+' '+VOICE.finalTranscript.trim()).trim()"));
+});
