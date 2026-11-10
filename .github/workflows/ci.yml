@@ -4,6 +4,7 @@ on:
   push:
     branches:
       - feature/deep-research-artifact-voice
+      - fix/reliability-memory-landing
   pull_request:
     branches:
       - main
