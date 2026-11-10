@@ -36,10 +36,70 @@ dialog h3{margin:14px 0 6px}.mem{display:flex;gap:8px;align-items:center;padding
 #artifactDlg{width:min(1100px,96vw);height:min(92vh,900px);max-height:92vh}#artifactDlg .studio{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:12px;height:calc(100% - 52px)}#artifactCode{height:100%;min-height:260px;resize:none;font:12px/1.5 ui-monospace,monospace}#artifactFrame{width:100%;height:100%;min-height:260px;background:#fff;border:1px solid var(--bd);border-radius:12px}#artifactPrompt{min-height:76px;resize:vertical}
 @media(max-width:760px){#artifactDlg .studio{grid-template-columns:1fr;overflow:auto}#artifactCode,#artifactFrame{height:38vh;min-height:220px}}
 @media(max-width:760px){#sb{position:fixed;inset:0 auto 0 0;transform:translateX(-100%)}#sb.open{transform:none}#menu{display:inline-block}}
+
+/* Phase 6: responsive workspace polish, accessible focus and motion preferences */
+:root{color-scheme:dark;--safe-b:env(safe-area-inset-bottom,0px);--safe-t:env(safe-area-inset-top,0px)}
+[data-theme=light]{color-scheme:light}
+button,a,select,input,textarea{ -webkit-tap-highlight-color:transparent }
+button:focus-visible,a:focus-visible,select:focus-visible,input:focus-visible,textarea:focus-visible{outline:2px solid var(--ac);outline-offset:2px}
+button:disabled{opacity:.55;cursor:not-allowed}
+::selection{background:color-mix(in srgb,var(--ac) 35%,transparent)}
+#sb{padding-top:max(12px,var(--safe-t));padding-bottom:max(12px,var(--safe-b));min-height:0}
+#top{min-height:58px;padding-top:max(10px,var(--safe-t));flex-shrink:0}
+#msgs{overscroll-behavior:contain;scroll-behavior:smooth}
+#comp{padding-bottom:max(18px,var(--safe-b))}
+.box{box-shadow:0 8px 28px #00000012}
+.m .act{transition:opacity .18s}
+#sidebarBackdrop{display:none}
+@media(hover:hover){.m:hover .act{opacity:1}}
+@media(max-width:900px){#sb{width:min(310px,86vw)}#msgs{padding:20px 14px}#top{gap:8px;padding-left:12px;padding-right:12px}#top select{max-width:190px!important}}
+@media(max-width:760px){
+ body{min-height:100dvh}
+ #sb{position:fixed;inset:0 auto 0 0;width:min(330px,88vw);height:100dvh;height:100svh;transform:translateX(-105%);transition:transform .22s ease;z-index:21;box-shadow:none}
+ #sb.open{transform:translateX(0);box-shadow:18px 0 50px #0008}
+ #sidebarBackdrop{display:block;position:fixed;inset:0;background:#05070bcc;opacity:0;pointer-events:none;transition:opacity .2s;z-index:20;border:0;border-radius:0;padding:0}
+ #sidebarBackdrop.show{opacity:1;pointer-events:auto}
+ #menu{display:inline-flex;align-items:center;justify-content:center;width:40px;height:40px;flex:0 0 40px}
+ #top{min-height:56px;padding: max(8px,var(--safe-t)) 10px 8px}
+ #top select#model{min-width:0;max-width:min(48vw,205px)!important;font-size:13px;padding:8px 7px}
+ #top a{display:none}
+ #who{max-width:90px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+ #syncStatus{font-size:10px!important;max-width:82px;overflow:hidden;text-overflow:ellipsis}
+ #msgs{padding:16px 10px}
+ .w{max-width:100%}
+ .m{margin-bottom:18px}
+ .m.user .b{max-width:92%}
+ #comp{padding:8px 8px max(10px,var(--safe-b))}
+ .box{padding:9px;border-radius:17px;gap:7px}
+ .box textarea{font-size:16px;min-height:42px;max-height:32dvh}
+ .toolrow{gap:5px;max-height:100px;overflow:auto;overscroll-behavior:contain;padding-bottom:2px}
+ .toolrow button,.toolrow select{font-size:12px;padding:7px 8px;white-space:nowrap}
+ .toolrow select{max-width:115px!important}
+ #comp .row button{min-height:38px}
+ #att,#img,#go{min-width:42px}
+ dialog{max-width:calc(100vw - 20px);max-height:calc(100dvh - 24px);overflow:auto;padding:16px}
+ #artifactDlg{width:calc(100vw - 12px);height:calc(100dvh - 16px);max-height:calc(100dvh - 16px);padding:12px}
+ #artifactDlg .studio{grid-template-columns:1fr;grid-template-rows:minmax(180px,38dvh) minmax(180px,38dvh);height:auto;overflow:auto}
+ #artifactCode,#artifactFrame{height:100%;min-height:180px}
+ #artifactPrompt{min-width:0}
+ #toast{bottom:calc(14px + var(--safe-b));max-width:calc(100vw - 24px)}
+}
+@media(max-width:420px){
+ #top{gap:5px}
+ #top select#model{max-width:43vw!important;font-size:12px}
+ #who{display:none}
+ #voiceLang{max-width:96px!important}
+ #comp .box>.row{gap:5px}
+ #artifactDlg .row{flex-wrap:wrap}
+ #artifactDlg .row h2{font-size:18px}
+}
+@media(min-width:761px) and (max-width:1050px){#sb{width:250px}#comp{padding-left:12px;padding-right:12px}}
+@media(prefers-reduced-motion:reduce){*,*::before,*::after{scroll-behavior:auto!important;animation-duration:.01ms!important;animation-iteration-count:1!important;transition-duration:.01ms!important}}
 </style></head><body>
 <aside id="sb"><div style="display:flex;align-items:center;gap:10px;padding:2px 4px"><img src="/logo.svg" width="30" height="30" alt=""><b style="font-size:18px;letter-spacing:.3px">Lumo</b></div><div class="row"><button class="pri sp" id="nc">+ New chat</button><button id="tempChat" title="Start a private, unsaved chat">Temporary</button></div><input id="q" placeholder="Search chats"><div id="list"></div><button id="loadMoreChats" style="display:none;width:100%;font-size:12px">Load more chats</button>
 <div class="row"><button id="mem" class="sp">Settings &amp; memory</button></div></aside>
-<main><div id="top"><button id="menu">☰</button><select id="model" style="max-width:220px"><option value="luna">GPT-6 Luna</option><option value="pro">GPT-6 Luna Pro</option><option value="video">Gemini 2.5 Flash (video)</option><option value="image">Nano Banana 2.1 (images)</option></select><select id="imageQuality" aria-label="Image resolution" title="Image resolution" style="width:auto;display:none"><option value="1K">1K</option><option value="2K" selected>2K</option><option value="4K">4K</option></select><span class="sp" style="flex:1"></span><a href="/" style="color:var(--mut);font-size:13px;text-decoration:none">Home</a><span id="syncStatus" aria-live="polite" style="color:var(--mut);font-size:11px;white-space:nowrap">Local-first</span><span id="who" style="color:var(--mut);font-size:13px"></span></div>
+<button id="sidebarBackdrop" aria-label="Close navigation menu" tabindex="-1"></button>
+<main><div id="top"><button id="menu" aria-label="Open navigation menu" aria-controls="sb" aria-expanded="false">☰</button><select id="model" style="max-width:220px"><option value="luna">GPT-6 Luna</option><option value="pro">GPT-6 Luna Pro</option><option value="video">Gemini 2.5 Flash (video)</option><option value="image">Nano Banana 2.1 (images)</option></select><select id="imageQuality" aria-label="Image resolution" title="Image resolution" style="width:auto;display:none"><option value="1K">1K</option><option value="2K" selected>2K</option><option value="4K">4K</option></select><span class="sp" style="flex:1"></span><a href="/" style="color:var(--mut);font-size:13px;text-decoration:none">Home</a><span id="syncStatus" aria-live="polite" style="color:var(--mut);font-size:11px;white-space:nowrap">Local-first</span><span id="who" style="color:var(--mut);font-size:13px"></span></div>
 <div id="msgs"><div class="w" id="mw"></div></div>
 <div id="comp"><div class="box"><div id="chips"></div><textarea id="in" rows="1" placeholder="Message Lumo…"></textarea>
 <div class="toolrow"><button id="autoRoute" title="Choose Luna or Luna Pro automatically">⚡ Auto</button><button id="research" title="Search the web and prepare a cited research report">🔎 Deep Research</button><button id="artifact" title="Create an interactive HTML artifact">◇ Artifact Studio</button><select id="voiceLang" title="Voice language" aria-label="Voice language" style="width:auto;max-width:125px"><option value="en-IN">English (India)</option><option value="en-US">English (US)</option><option value="hi-IN">हिन्दी</option><option value="bn-IN">বাংলা</option><option value="ta-IN">தமிழ்</option><option value="te-IN">తెలుగు</option><option value="mr-IN">मराठी</option><option value="ur-IN">اردو</option></select><button id="mic" title="Dictate a message">🎙 Voice</button><button id="speak" title="Read the latest answer aloud">🔊 Read aloud</button><button id="stopSpeak" title="Stop spoken audio">■ Stop audio</button><button id="voiceMode" title="Enable hands-free voice conversation">◎ Voice mode</button></div><div class="row"><input type="file" id="file" hidden multiple accept="image/*,audio/*,video/mp4,video/webm,video/quicktime,.pdf,.docx,.pptx,.xlsx,.txt,.md,.csv,.json,.js,.ts,.py,.java,.c,.cpp,.html,.css,.xml,.yml,.yaml,.sql,.sh,.log"><button id="att" title="Attach images, audio, video, documents or text/code files">📎</button><button id="img" title="Generate an image with Gemini Nano Banana 2.1">🖼 Image</button><span class="sp"></span><button class="pri" id="go">Send</button></div></div></div></main>
@@ -106,10 +166,10 @@ async function boot(u){S.user=u;S.autoRoute=!!u.settings?.autoRoute;$('#autoRout
 async function loadList(reset=true){const request=++S.listRequest,query=$('#q').value.trim();if(reset){S.convCursor=null;S.convHasMore=false;S.convQuery=query;S.convs=[]}try{const params=new URLSearchParams({q:query,limit:'50'});if(!reset&&S.convCursor)params.set('cursor',JSON.stringify(S.convCursor));const page=await api('conversations?'+params.toString());if(request!==S.listRequest)return;const conversations=page.conversations||[];S.convCursor=page.nextCursor||null;S.convHasMore=!!page.hasMore;const locals=await localDirtyAll();if(request!==S.listRequest)return;const merged=new Map(S.convs.map(c=>[c.id,c]));for(const c of conversations)merged.set(c.id,c);for(const c of locals)if(LOCAL.dirty.has(c.id)||!merged.has(c.id))merged.set(c.id,{id:c.id,title:c.title,model:c.model,pinned:!!c.pinned,folder:c.folder||'',updated_at:c.updated_at,local:true});S.convs=[...merged.values()].sort((a,b)=>Number(b.pinned)-Number(a.pinned)||String(b.updated_at).localeCompare(String(a.updated_at)));const l=$('#list');l.innerHTML='';$('#loadMoreChats').style.display=S.convHasMore?'block':'none';$('#loadMoreChats').disabled=false;for(const c of S.convs){const d=document.createElement('div');d.className='ci'+(c.id===S.cur?' on':'');d.innerHTML='<span></span><button title="Pin">📌</button><button title="Rename">✎</button><button title="Folder">📁</button><button title="Delete">🗑</button>';d.firstChild.textContent=(c.folder?'📁 '+c.folder+' / ':'')+c.title+(c.local?' · local':'');const[b1,b2,bf,b3]=d.querySelectorAll('button');d.onclick=()=>openConv(c.id);b1.onclick=async e=>{e.stopPropagation();const lc=await localGet(c.id);if(lc){lc.pinned=!lc.pinned;await saveLocal(lc)}else await api('conversations/'+c.id,'PATCH',{pinned:!c.pinned});loadList()};b2.onclick=async e=>{e.stopPropagation();const t=prompt('Rename chat',c.title);if(t){const lc=await localGet(c.id);if(lc){lc.title=t;await saveLocal(lc)}else await api('conversations/'+c.id,'PATCH',{title:t});loadList()}};bf.onclick=async e=>{e.stopPropagation();const folder=prompt('Folder name (leave blank to remove folder)',c.folder||'');if(folder===null)return;const lc=await localGet(c.id);if(lc){lc.folder=folder.trim().slice(0,60);await saveLocal(lc)}else await api('conversations/'+c.id,'PATCH',{folder:folder.trim().slice(0,60)});await loadList()};b3.onclick=async e=>{e.stopPropagation();if(confirm('Delete this chat?')){LOCAL.blockSync=true;try{while(LOCAL.syncing)await new Promise(r=>setTimeout(r,50));try{await api('conversations/'+c.id,'DELETE')}catch(err){if(!(c.local&&err.status===404))throw err}await new Promise((resolve,reject)=>{const tx=LOCAL.db.transaction('conversations','readwrite');tx.objectStore('conversations').delete(c.id);tx.oncomplete=resolve;tx.onerror=()=>reject(tx.error)});LOCAL.dirty.delete(c.id);if(S.cur===c.id)newChat();await loadList()}catch(err){toast('Could not delete chat: '+err.message)}finally{LOCAL.blockSync=false;if(LOCAL.dirty.size)scheduleSync()}}};l.append(d)}}catch(e){if(request===S.listRequest)toast('Could not load conversations: '+e.message)}}
 $('#loadMoreChats').onclick=async()=>{if(!S.convHasMore)return;$('#loadMoreChats').disabled=true;await loadList(false)};
 $('#q').oninput=()=>{clearTimeout($('#q').t);$('#q').t=setTimeout(()=>loadList(true),250)};
-async function openConv(id){if(S.busy)return;S.temporary=false;$('#tempChat').classList.remove('active');S.cur=id;const lc=await localGet(id);if(lc&&LOCAL.dirty.has(id))S.msgs=lc.messages||[];else{const{messages}=await api('conversations/'+id);const localById=new Map((lc?.messages||[]).map(m=>[m.id,m]));S.msgs=messages.map(m=>{const local=localById.get(m.id);return local?{...m,attachments:(m.attachments||[]).map((a,i)=>local.attachments?.[i]?.dataUrl?{...a,dataUrl:local.attachments[i].dataUrl}:a),_imgs:local._imgs||[],_video:local._video||null,_localOnlyImages:!!(local._imgs?.length),_localOnlyVideo:!!local._video}:m});const meta=S.convs.find(c=>c.id===id)||{};await saveLocal({id,title:meta.title||lc?.title||'Chat',model:meta.model||lc?.model||'luna',pinned:!!meta.pinned,folder:meta.folder||lc?.folder||'',messages:S.msgs,pendingSync:false},false)}render();loadList();$('#sb').classList.remove('open')}
+async function openConv(id){if(S.busy)return;S.temporary=false;$('#tempChat').classList.remove('active');S.cur=id;const lc=await localGet(id);if(lc&&LOCAL.dirty.has(id))S.msgs=lc.messages||[];else{const{messages}=await api('conversations/'+id);const localById=new Map((lc?.messages||[]).map(m=>[m.id,m]));S.msgs=messages.map(m=>{const local=localById.get(m.id);return local?{...m,attachments:(m.attachments||[]).map((a,i)=>local.attachments?.[i]?.dataUrl?{...a,dataUrl:local.attachments[i].dataUrl}:a),_imgs:local._imgs||[],_video:local._video||null,_localOnlyImages:!!(local._imgs?.length),_localOnlyVideo:!!local._video}:m});const meta=S.convs.find(c=>c.id===id)||{};await saveLocal({id,title:meta.title||lc?.title||'Chat',model:meta.model||lc?.model||'luna',pinned:!!meta.pinned,folder:meta.folder||lc?.folder||'',messages:S.msgs,pendingSync:false},false)}render();loadList();setSidebar(false)}
 function newChat(){if(S.busy)return;S.cur=null;S.msgs=[];S.temporary=false;$('#tempChat').classList.remove('active');render();updateSyncStatus();loadList();$('#sb').classList.remove('open')}
 $('#tempChat').onclick=()=>{if(S.busy)return;S.cur=null;S.msgs=[];S.temporary=true;$('#tempChat').classList.add('active');render();updateSyncStatus('Temporary chat · not saved');$('#sb').classList.remove('open');toast('Temporary chat started. Messages will not be saved to Lumo history or memory.')};
-$('#nc').onclick=newChat;$('#menu').onclick=()=>$('#sb').classList.toggle('open');
+$('#nc').onclick=newChat;function setSidebar(open){$('#sb').classList.toggle('open',open);$('#sidebarBackdrop').classList.toggle('show',open);$('#menu').setAttribute('aria-expanded',String(open));$('#menu').setAttribute('aria-label',open?'Close navigation menu':'Open navigation menu');$('#sidebarBackdrop').tabIndex=open?0:-1}$('#menu').onclick=()=>setSidebar(!$('#sb').classList.contains('open'));$('#sidebarBackdrop').onclick=()=>setSidebar(false);document.addEventListener('keydown',e=>{if(e.key==='Escape'&&$('#sb').classList.contains('open'))setSidebar(false)});
 window.addEventListener('focus',()=>{if(S.user&&!S.busy){loadList();if(S.cur&&!LOCAL.dirty.has(S.cur))openConv(S.cur).catch(()=>{})}});
 // ---- rendering
 function md(t){const h=DOMPurify.sanitize(marked.parse(t||''));const d=document.createElement('div');d.innerHTML=h;d.querySelectorAll('pre').forEach(p=>{const c=p.querySelector('code');if(c)hljs.highlightElement(c);const b=document.createElement('button');b.className='cp';b.textContent='Copy';b.onclick=()=>{navigator.clipboard.writeText(p.innerText.replace(/Copy$/,'').trim());b.textContent='Copied';setTimeout(()=>b.textContent='Copy',1200)};p.append(b)});return d}
