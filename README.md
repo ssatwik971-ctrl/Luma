@@ -94,3 +94,6 @@ Phase 2 features are implemented on the development branch. Browser and live-ser
 - Batch sync now reconciles removed messages with one set-based database delete instead of one delete query per conversation.
 - Data export groups messages in one pass rather than repeatedly filtering the full message list for each conversation.
 - Source-integrity regression checks cover these optimisations. Full test-suite execution, live database verification, and performance measurements are still pending.
+
+- Conversation sidebar now uses bounded keyset pagination (50 chats per page, capped at 100) instead of fetching up to 200 records at once; a Load more control fetches subsequent pages.
+- Search requests use request sequencing so slower old queries cannot overwrite newer results.
