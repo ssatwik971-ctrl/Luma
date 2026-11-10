@@ -259,12 +259,20 @@ test('client reports locally removed messages explicitly and never re-sends alre
   assert.deepEqual(JSON.parse(JSON.stringify(item.messages.map(m => m.id))), [ids[2], ids[3]]);
 });
 
-test('closing or hiding the page flushes pending sync once with keepalive, throttled to protect database wake-ups', () => {
+test('messages sync immediately after local persistence, with bounded retries only when the cloud request fails', () => {
+  assert.ok(appJs.includes('function scheduleSync(delay=0)'));
+  assert.ok(appJs.includes('setTimeout(()=>{LOCAL.timer=null;flushSync()},delay)'));
+  assert.ok(appJs.includes("updateSyncStatus(delay?'Saved locally · retry scheduled':'Sending to cloud…')"));
+  assert.ok(appJs.includes('LOCAL.retryDelay=Math.min(LOCAL.retryDelay?LOCAL.retryDelay*2:1000,60000)'));
+  assert.ok(!appJs.includes('setTimeout(flushSync,300000)'));
+  assert.ok(!appJs.includes('setTimeout(flushSync,600000)'));
+});
+
+test('closing or hiding the page still flushes pending sync with keepalive', () => {
   assert.ok(appJs.includes("keepalive:!!opts.keepalive"));
   assert.ok(appJs.includes("flushSync({keepalive:true})"));
   assert.ok(appJs.includes("Date.now()-(LOCAL.lastFlush||0)>60000"));
   assert.ok(appJs.includes("document.addEventListener('visibilitychange'"));
-  assert.ok(appJs.includes('LOCAL.timer=setTimeout(flushSync,300000)'));
 });
 
 test('Phase 5 export groups messages in one pass rather than filtering per conversation', () => {
