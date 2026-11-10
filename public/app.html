@@ -130,11 +130,11 @@ S.autoRoute=!!S.user?.settings?.autoRoute;$('#autoRoute').classList.toggle('acti
 
 function routeModel(text){
  if(!S.autoRoute||S.model==='image'||S.model==='video')return S.model;
- const q=String(text||''),lower=q.toLowerCase();let score=0;
+ const q=String(text||'');let score=0;
  if(/\b(prove|derive|theorem|proof|architecture|debug|refactor|root cause|trade[- ]offs|evaluate|critique|comprehensive|deep dive)\b/i.test(q))score+=2;
  if(/\b(analy[sz]e|compare|design|plan|research|step[- ]by[- ]step|explain why|reasoning)\b/i.test(q))score+=1;
  if(/\b(function|class|stack trace|exception|algorithm|sql|javascript|python|java|typescript)\b/i.test(q)||/(```|=>|\bconst\s+\w+\s*=)/.test(q))score+=2;
- if(/(?:\d+\\s*[=<>±×÷]|\bderive\b|\bcalculate\b).{0,80}(?:\d|[a-z])?/i.test(q))score+=1;
+ if(/(?:\d+\s*[=<>±×÷]|\bderive\b|\bcalculate\b).{0,80}(?:\d|[a-z])?/i.test(q))score+=1;
  if((q.match(/\?/g)||[]).length>=3)score+=1;
  if(q.length>1400)score+=2;else if(q.length>700)score+=1;
  return score>=3?'pro':'luna'
