@@ -263,3 +263,13 @@ test('Phase 6 responsive layout and accessible mobile navigation are present', (
   assert.ok(app.includes('function setSidebar(open)'));
   assert.ok(app.includes('aria-label="Close navigation menu"'));
 });
+
+test('Phase 6 final polish covers readable messages, touch controls and composer accessibility', () => {
+  assert.ok(app.includes('Phase 6 final polish'));
+  assert.ok(app.includes('aria-label="Choose AI model"'));
+  assert.ok(app.includes('aria-label="Message Lumo"'));
+  assert.ok(app.includes('aria-label', app.indexOf("function busy(b)")));
+  assert.ok(app.includes('@media(prefers-contrast:more)'));
+  assert.ok(app.includes('.m.assistant .b table'));
+  assert.ok(app.includes('#box:focus-within') || app.includes('.box:focus-within'));
+});
