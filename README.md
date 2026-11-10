@@ -40,3 +40,11 @@
 - Artifact Studio generates standalone HTML/CSS/JS mini-apps and diagrams, with editable source and sandboxed live preview. Artifacts can be saved in conversations and downloaded.
 - Voice uses browser speech recognition for dictation and hands-free turn-taking, plus speech synthesis for reading answers aloud. Browser/device support and microphone permission are required.
 - Image generation uses Gemini Nano Banana 2.1 through Puter.js. Users can choose 1K, 2K, or 4K output; 2K is the default. Actual usage charges depend on the selected resolution and Puter's current provider pricing; each user pays through their own Puter account.
+
+## Local-first conversation sync
+- Chat turns are written immediately to the browser's IndexedDB store, so the conversation remains available locally without a database write for every message.
+- Pending conversations are batch-synced after five minutes of inactivity, with a ten-minute maximum wait while the page remains active.
+- The batch endpoint validates payload sizes and uses stable UUIDs with conflict-safe inserts, making retries idempotent.
+- Failed syncs remain queued locally and retry later; opening the app or reconnecting to the internet resumes synchronization. A page-close sync is attempted, but browsers may terminate it, so the persistent queue is the recovery mechanism.
+- The chat header reports whether changes are saved locally, syncing, or synced. AI requests still run immediately through Puter; only database persistence is deferred.
+- Local browser storage is device/browser-specific and is not a substitute for cloud backup until the sync completes. Clear site data or using another browser/device can remove or hide unsynced local conversations.
