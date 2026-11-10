@@ -35,3 +35,18 @@ test('delete-all blocks sync and clears the local conversation store after serve
   assert.ok(app.includes("objectStore('conversations').clear()"));
   assert.ok(app.includes('LOCAL.dirty.clear()'));
 });
+
+test('Phase 2 advanced chat controls are present', () => {
+  assert.ok(app.includes('id="arena"'));
+  assert.ok(app.includes('id="autoRoute"'));
+  assert.ok(app.includes('async function branchAt(index)'));
+  assert.ok(app.includes('async function regenAs(model)'));
+  assert.ok(app.includes("textContent='Branch here'"));
+});
+
+test('conversation folders are persisted and memory inserts are deduplicated', () => {
+  assert.ok(api.includes('add column if not exists folder text not null default'));
+  assert.ok(api.includes('folder=excluded.folder'));
+  assert.ok(api.includes('lower(trim(text))=lower(trim('));
+  assert.ok(app.includes("title=\"Folder\""));
+});
