@@ -159,8 +159,29 @@ export default async (req) => {
       if (!c && m === 'DELETE') { await sql`delete from conversations where id=${b} and user_id=${uid}`; return J({ ok: true }); }
       if (c === 'messages' && m === 'POST') {
         if (!['user', 'assistant'].includes(body.role)) return E('Bad role');
-        const att = (Array.isArray(body.attachments) ? body.attachments : []).slice(0, 10).map(x => ({ name: clean(x.name, 200), type: clean(x.type, 100), size: +x.size || 0, text: x.text ? clean(x.text, 60000) : undefined, gen: x.gen ? true : undefined, dataUrl: x.gen && /^data:image\//.test(x.dataUrl || '') ? clean(x.dataUrl, 8e6) : undefined }));
-        const [r] = await sql`insert into messages(conv_id,user_id,role,content,model,attachments) values(${b},${uid},${body.role},${clean(body.content, 200000)},${clean(body.model, 20) || null},${JSON.stringify(att)}::jsonb) returning id,role,content,model,attachments,created_at`;
+        if (typeof body.content !== 'string' || body.content.length > 100000) return E('Message is too long (100,000 character limit)');
+        const raw = Array.isArray(body.attachments) ? body.attachments : [];
+        if (raw.length > 10) return E('A message can contain at most 10 attachments');
+        let totalText = 0;
+        const att = [];
+        for (const x of raw) {
+          if (!x || typeof x !== 'object') return E('Invalid attachment');
+          const name = clean(x.name, 200), type = clean(x.type, 100), size = Number(x.size) || 0;
+          if (!name || size < 0 || size > 10 * 1024 * 1024) return E('Invalid attachment name or size (10 MB maximum per file)');
+          const item = { name, type, size };
+          if (typeof x.text === 'string') {
+            if (x.text.length > 60000) return E('Extracted attachment text exceeds 60,000 characters');
+            totalText += x.text.length;
+            if (totalText > 180000) return E('Combined attachment text exceeds 180,000 characters');
+            item.text = x.text;
+          }
+          if (x.gen === true) {
+            if (typeof x.dataUrl !== 'string' || x.dataUrl.length > 8 * 1024 * 1024 || !/^data:image\\/(png|jpeg|webp);base64,/i.test(x.dataUrl)) return E('Invalid generated image attachment');
+            item.gen = true; item.dataUrl = x.dataUrl;
+          }
+          att.push(item);
+        }
+        const [r] = await sql`insert into messages(conv_id,user_id,role,content,model,attachments) values(${b},${uid},${body.role},${body.content},${clean(body.model, 20) || null},${JSON.stringify(att)}::jsonb) returning id,role,content,model,attachments,created_at`;
         await sql`update conversations set updated_at=now() where id=${b}`;
         return J({ message: r });
       }
