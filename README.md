@@ -106,3 +106,10 @@ Phase 2 features are implemented on the development branch. Browser and live-ser
 - Refined message typography, Markdown lists/tables/code blocks, touch-friendly message actions, composer focus states and accessible model/composer labels.
 - Improved settings and Artifact Studio dialog sizing, keyboard focus visibility and high-contrast preferences.
 - Refined mobile Artifact Studio and settings dialogs for smaller screens.
+
+
+## Phase 7 - Final verification (in progress)
+- Added source-level regression checks for request-origin protection, user-scoped data access, rate limits, bounded sync/attachment payloads, pagination validation, deployment security headers, CI configuration and non-secret health diagnostics.
+- Automated tests are configured in GitHub Actions on development-branch pushes and pull requests targeting main.
+- Remaining before release: obtain a successful CI run, run the complete test suite in the CI environment, test Netlify Identity and Database on a deployed preview, exercise Puter chat/image/audio/video paths, verify local/cloud sync across browsers/devices, and complete responsive/accessibility and privacy/security checks.
+- No production deployment or merge to main is authorized by this phase.
