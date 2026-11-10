@@ -37,7 +37,6 @@ test('delete-all blocks sync and clears the local conversation store after serve
 });
 
 test('Phase 2 advanced chat controls are present', () => {
-  assert.ok(app.includes('id="arena"'));
   assert.ok(app.includes('id="autoRoute"'));
   assert.ok(app.includes('async function branchAt(index)'));
   assert.ok(app.includes('async function regenAs(model)'));
@@ -49,4 +48,10 @@ test('conversation folders are persisted and memory inserts are deduplicated', (
   assert.ok(api.includes('folder=excluded.folder'));
   assert.ok(api.includes('lower(trim(text))=lower(trim('));
   assert.ok(app.includes("title=\"Folder\""));
+});
+
+test('Multi-model Arena is removed to avoid duplicate model requests', () => {
+  assert.ok(!app.includes('id="arena"'));
+  assert.ok(!app.includes('runArena('));
+  assert.ok(!app.includes('⚔ Arena'));
 });
