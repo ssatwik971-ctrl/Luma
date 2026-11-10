@@ -55,3 +55,15 @@ test('Multi-model Arena is removed to avoid duplicate model requests', () => {
   assert.ok(!app.includes('runArena('));
   assert.ok(!app.includes('⚔ Arena'));
 });
+
+test('temporary chats do not persist messages or trigger automatic memory extraction', () => {
+  assert.ok(app.includes('S.temporary=true'));
+  assert.ok(app.includes('if(!S.temporary){const c=await localGet(S.cur)'));
+  assert.ok(app.includes('if(!S.temporary&&!M.img&&S.user.settings?.autoMemory)'));
+});
+
+test('saved memories can be edited with duplicate protection', () => {
+  assert.ok(api.includes("if (m === 'PATCH' && b)"));
+  assert.ok(api.includes('and id<>${b} limit 1'));
+  assert.ok(app.includes("title=\\\"Edit memory\\\""));
+});
