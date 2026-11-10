@@ -50,14 +50,14 @@
 - Local browser storage is device/browser-specific and is not a substitute for cloud backup until the sync completes. Clear site data or using another browser/device can remove or hide unsynced local conversations.
 
 
-## Phase 2 · Advanced AI chat (in progress)
+## Phase 2 · Advanced AI chat (implemented; live device testing still required)
 - **Smart model routing** can be enabled from the composer. It selects Luna Pro for prompts that look complex or long, and Luna for simpler prompts. Image generation remains on the selected image model.
 - **Branch here** creates a separate conversation from the selected message; the original conversation remains unchanged.
 - **Regenerate with another model** lets the latest assistant response be retried with Luna or Luna Pro.
 - **Conversation folders** can be assigned from the folder icon in the sidebar. Folder metadata syncs with the conversation.
 - **Memory deduplication** avoids inserting an exact case-insensitive duplicate memory.
 
-Phase 2 features are being implemented on the development branch and still require browser and live-service testing before production use.
+Phase 2 features are implemented on the development branch. Browser and live-service testing is still required before production use.
 
 
 **Cost-conscious design:** Multi-model Arena was removed because generating two answers to one prompt would consume two Puter model requests. Lumo now uses one selected/routed model request per response.
@@ -69,14 +69,14 @@ Phase 2 features are being implemented on the development branch and still requi
 - **Cost control:** Arena mode is removed. A normal response uses one selected/routed model request. Automatic memory extraction remains opt-in because it makes an additional model request.
 
 
-## Phase 3 · Advanced AI and multimodal (in progress)
+## Phase 3 · Advanced AI and multimodal (implemented; live device testing still required)
 - **Voice language selection:** choose English (India/US), Hindi, Bengali, Tamil, Telugu, Marathi or Urdu for browser speech recognition and speech synthesis. Actual language availability depends on the browser and installed voice packs.
 - **Voice playback controls:** read the latest response aloud and stop playback/listening. Hands-free mode continues listening after the assistant finishes speaking; microphone permission and supported browser APIs are required.
 - **Image continuity on the same device:** when a synced conversation is reopened, Lumo restores locally cached image inputs for that device. The image bytes are not uploaded to cloud history, so they are not available on other devices.
-- **Arena remains removed:** Phase 3 does not add parallel model responses. Existing PDF/Office OCR and image generation continue to use the configured Puter.js services and may consume the user's Puter resources.
+- **Arena remains removed:** Phase 3 does not add parallel model responses. Existing PDF/Office OCR and image generation continue to use the configured Puter.js services and may consume the user's Puter resources. Speech transcription passes the selected language's ISO base code to Puter; browser speech recognition and speech synthesis retain the full locale.
 
 
 ### Phase 3 · Audio and video input
 - Audio files can be attached and explicitly transcribed with Puter.js `puter.ai.speech2txt()`. Transcription is user-triggered, not automatic; the transcript is inserted into the composer for review before sending. The transcription request uses Puter resources and may incur usage.
 - Video files can be attached (up to 20 MB, one per message) and analyzed with the explicit **Gemini 2.5 Flash (video)** model option. Lumo never silently switches models; select that model before sending a video. Video analysis is one chat request, but video-capable model support and billing depend on Puter's current service availability. Images are capped at 5 MB for inline model input.
-- Video files are retained in the current local conversation only; the raw video is not included in cloud sync. Reopen the chat on the same device to access locally stored media where the browser retains it.
+- Video File objects are retained in IndexedDB on the same device and restored when a synced conversation is reopened there; raw video bytes are never uploaded to cloud history and are unavailable on other devices. The app labels this device-only limitation in the chat.
