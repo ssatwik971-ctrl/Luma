@@ -82,7 +82,7 @@ Phase 2 features are implemented on the development branch. Browser and live-ser
 - Video File objects are retained in IndexedDB on the same device and restored when a synced conversation is reopened there; raw video bytes are never uploaded to cloud history and are unavailable on other devices. The app labels this device-only limitation in the chat.
 
 
-## Phase 4 · Context intelligence (first increment)
-- Saved memories are ranked against the current prompt using lightweight local keyword matching. Only up to eight relevant memories are included, with a 3,000-character cap; users can switch memory use off in Settings.
-- Long chats send the most recent 20 turns plus up to six older turns that match the current prompt. The full conversation remains saved; this only selects the context sent for the current model request.
-- Retrieval is local and makes no additional Puter model call. It is a relevance heuristic, not semantic search, so it may miss paraphrases or subtle connections.
+## Phase 4 · Context intelligence
+- Saved memories are ranked against the current prompt using lightweight local keyword matching, with a minimum relevance threshold. Up to eight relevant memories (3,000 characters total) are included; memory use can be switched off in Settings.
+- Long chats send the most recent 20 messages plus up to six matching older messages, retaining adjacent user/assistant turns for context. The complete conversation remains saved; only the current model request's context is selected.
+- Retrieval is local and makes no additional Puter model call. It is a lightweight relevance heuristic, not semantic search, so it may miss paraphrases or subtle connections. Automatic memory extraction remains separately opt-in and can use an additional Puter request.
