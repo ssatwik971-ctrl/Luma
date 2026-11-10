@@ -240,3 +240,11 @@ test('Phase 5 chat sidebar supports loading additional pages and cancels stale s
   assert.ok(app.includes('const request=++S.listRequest'));
   assert.ok(app.includes('if(request!==S.listRequest)return'));
 });
+
+test('Phase 5 IndexedDB migration indexes pending local changes', () => {
+  assert.ok(app.includes("indexedDB.open('lumo-local-v1',2)"));
+  assert.ok(app.includes("createIndex('pendingSync','pendingSync'"));
+  assert.ok(app.includes("function localDirtyAll()"));
+  assert.ok(!app.includes('function localAll()'));
+  assert.ok(app.includes("index('pendingSync').getAll(true)"));
+});
