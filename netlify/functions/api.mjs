@@ -17,12 +17,18 @@ const init = () => ready ??= (async () => {
   await sql`create index if not exists conv_user on conversations(user_id, updated_at desc)`;
   await sql`alter table conversations add column if not exists folder text not null default ''`;
   await sql`create table if not exists messages(seq bigserial primary key, id uuid not null default gen_random_uuid(), conv_id uuid not null references conversations(id) on delete cascade, user_id uuid not null, role text not null check (role in ('user','assistant')), content text not null, model text, attachments jsonb not null default '[]', created_at timestamptz not null default now())`;
-  // The sync endpoint uses an idempotent conflict target. Clean up any legacy duplicate
-  // IDs per user before adding the matching unique index.
-  await sql`delete from messages a using messages b where a.user_id=b.user_id and a.id=b.id and a.seq>b.seq`;
-  await sql`create unique index if not exists messages_id_user_unique on messages(id,user_id)`;
+  // Run the legacy duplicate cleanup only when the sync conflict index is missing.
+  // This keeps normal cold starts from repeatedly scanning the entire messages table.
+  const [syncIndex] = await sql`select 1 from pg_indexes where schemaname=current_schema() and indexname='messages_id_user_unique' limit 1`;
+  if (!syncIndex) {
+    await sql`delete from messages a using messages b where a.user_id=b.user_id and a.id=b.id and a.seq>b.seq`;
+    await sql`create unique index messages_id_user_unique on messages(id,user_id)`;
+  }
   await sql`create index if not exists msg_conv on messages(conv_id, seq)`;
+  await sql`create index if not exists messages_user_conv_seq on messages(user_id, conv_id, seq)`;
+  await sql`create index if not exists messages_user_seq on messages(user_id, seq)`;
   await sql`create table if not exists memories(id uuid primary key default gen_random_uuid(), user_id uuid not null, text text not null, created_at timestamptz not null default now())`;
+  await sql`create index if not exists memories_user_created on memories(user_id, created_at desc)`;
   await sql`create table if not exists hits(k text not null, w bigint not null, n int not null default 0, primary key(k, w))`;
 })();
 
@@ -149,11 +155,14 @@ export default async (req) => {
         from jsonb_to_recordset(${JSON.stringify(messages)}::jsonb) as x(id uuid,conv_id uuid,role text,content text,model text,attachments jsonb,created_at timestamptz)
         join conversations c on c.id=x.conv_id and c.user_id=${uid}
         on conflict(id,user_id) do nothing`;
-      for (const c of convs) {
-        const keep = messages.filter(m => m.conv_id === c.id).map(m => m.id);
-        if (keep.length) await sql`delete from messages where conv_id=${c.id} and user_id=${uid} and not (id = any(${keep}::uuid[]))`;
-        else await sql`delete from messages where conv_id=${c.id} and user_id=${uid}`;
-      }
+      // Reconcile every conversation in one set-based DELETE instead of one
+      // database round trip per conversation in the batch.
+      const keepByConversation = new Map(convs.map(c => [c.id, []]));
+      for (const msg of messages) keepByConversation.get(msg.conv_id)?.push(msg.id);
+      const keepRows = convs.map(c => ({ id: c.id, keep: keepByConversation.get(c.id) || [] }));
+      await sql`delete from messages m
+        using jsonb_to_recordset(${JSON.stringify(keepRows)}::jsonb) as x(id uuid, keep uuid[])
+        where m.conv_id=x.id and m.user_id=${uid} and not (m.id = any(x.keep))`;
       return J({ ok: true, conversations: convs.length, messages: messages.length });
     }
     if (a === 'stats' && m === 'GET') {
@@ -165,7 +174,13 @@ export default async (req) => {
       const messages = await sql`select conv_id,role,content,model,created_at from messages where user_id=${uid} order by seq`;
       const memories = await sql`select text,created_at from memories where user_id=${uid} order by created_at`;
       const [p] = await sql`select settings from profiles where user_id=${uid}`;
-      const out = conversations.map(c => ({ ...c, messages: messages.filter(x => x.conv_id === c.id).map(({ conv_id, ...r }) => r) }));
+      // Group in one pass; repeated Array.filter made large exports O(chats × messages).
+      const grouped = new Map(conversations.map(c => [c.id, []]));
+      for (const message of messages) {
+        const group = grouped.get(message.conv_id);
+        if (group) { const { conv_id, ...item } = message; group.push(item); }
+      }
+      const out = conversations.map(c => ({ ...c, messages: grouped.get(c.id) || [] }));
       return J({ exported_at: new Date().toISOString(), email: iu.email, settings: p?.settings || {}, memories, conversations: out }, 200, { 'content-disposition': 'attachment; filename="lumo-export.json"' });
     }
     if (a === 'data' && m === 'DELETE') { // wipes this user's chats, memories and settings (the Identity login itself stays)
