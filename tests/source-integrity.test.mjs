@@ -204,3 +204,23 @@ test('Phase 4 selected context is bounded by a character budget', () => {
   assert.ok(app.includes('function fitContextBudget(history,maxChars=28000)'));
   assert.ok(app.includes('fitContextBudget(selectRelevantHistory'));
 });
+
+test('Phase 5 only performs legacy duplicate cleanup when the unique sync index is absent', () => {
+  assert.ok(api.includes("select 1 from pg_indexes where schemaname=current_schema() and indexname='messages_id_user_unique'"));
+  assert.ok(api.includes('if (!syncIndex)'));
+  assert.ok(api.includes('create index if not exists messages_user_conv_seq'));
+  assert.ok(api.includes('create index if not exists messages_user_seq'));
+  assert.ok(api.includes('create index if not exists memories_user_created'));
+});
+
+test('Phase 5 reconciles a sync batch with one set-based message deletion', () => {
+  assert.ok(api.includes('const keepByConversation = new Map(convs.map(c => [c.id, []]))'));
+  assert.ok(api.includes('jsonb_to_recordset(${JSON.stringify(keepRows)}::jsonb) as x(id uuid, keep uuid[])'));
+  assert.ok(!api.includes('for (const c of convs) {\n        const keep = messages.filter'));
+});
+
+test('Phase 5 export groups messages in one pass rather than filtering per conversation', () => {
+  assert.ok(api.includes('const grouped = new Map(conversations.map(c => [c.id, []]))'));
+  assert.ok(api.includes('for (const message of messages)'));
+  assert.ok(!api.includes('messages.filter(x => x.conv_id === c.id)'));
+});
