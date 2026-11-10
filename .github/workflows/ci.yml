@@ -1,0 +1,27 @@
+name: Lumo source checks
+
+on:
+  push:
+    branches:
+      - feature/deep-research-artifact-voice
+      - fix/reliability-memory-landing
+      - fix/sync-data-safety
+      - fix/privacy-artifacts-temp-chat
+      - fix/small-fixes
+      - feature/cloud-images
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  source-checks:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: Run source integrity tests
+        run: npm test

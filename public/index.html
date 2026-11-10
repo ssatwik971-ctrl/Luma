@@ -1,7 +1,7 @@
 <!doctype html>
 <html lang="en" data-theme="dark"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Lumo — your AI chat workspace</title>
-<meta name="description" content="Lumo is an AI chat workspace with accounts, synced chat history, memory, image generation and file uploads. Powered by GPT-6 Luna, GPT-6 Luna Pro and GPT Image 2 through Puter.">
+<meta name="description" content="Lumo is an AI chat workspace with accounts, synced chat history, memory, image generation and file uploads. Powered by GPT-6 Luna, GPT-6 Luna Pro and Gemini Nano Banana 2.1 through Puter.js.">
 <meta property="og:title" content="Lumo — your AI chat workspace"><meta property="og:description" content="Synced chats, memory, image generation and file uploads in one clean workspace.">
 <link rel="icon" type="image/svg+xml" href="/logo.svg">
 <link rel="preconnect" href="https://fonts.googleapis.com"><link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
@@ -16,7 +16,7 @@ try{document.documentElement.dataset.theme=localStorage.getItem('theme')||'dark'
 <a class="btn" href="/login" id="n1">Log in</a><a class="btn pri" href="/login#signup" id="n2">Get started</a></div></nav>
 
 <header class="hero"><div class="wrap">
-<span class="pill">✨ GPT-6 Luna · Luna Pro · GPT Image 2</span>
+<span class="pill">✨ GPT-6 Luna · GPT-6 Luna Pro · Nano Banana 2.1</span>
 <h1>One workspace for <span class="grad">every conversation</span></h1>
 <p class="lead">Chat, generate images and attach files, with your history, memory and settings saved to your account and synced across every device.</p>
 <div class="cta"><a class="btn pri lg" href="/login#signup" id="h1">Create free account</a><a class="btn lg" href="#features">See what's inside</a></div>
@@ -31,17 +31,21 @@ try{document.documentElement.dataset.theme=localStorage.getItem('theme')||'dark'
 <div class="card"><div class="ic">☁️</div><h3>Synced history</h3><p>Every chat is stored in a database tied to your account, so it is there on your phone and laptop.</p></div>
 <div class="card"><div class="ic">🧠</div><h3>Memory</h3><p>Save facts and preferences once. Add them yourself or let Lumo suggest them, and delete any time.</p></div>
 <div class="card"><div class="ic">🔎</div><h3>Search &amp; organise</h3><p>Search inside every conversation, pin the important ones, rename or delete in one click.</p></div>
-<div class="card"><div class="ic">🖼️</div><h3>Image generation</h3><p>Switch to GPT Image 2 and turn a sentence into an image, saved right in the chat.</p></div>
-<div class="card"><div class="ic">📎</div><h3>Files &amp; images</h3><p>Attach images, text and code files and ask questions about them.</p></div>
+<div class="card"><div class="ic">🖼️</div><h3>Image generation</h3><p>Generate images with Gemini Nano Banana 2.1, choose output resolution, and keep results in your chat.</p></div>
+<div class="card"><div class="ic">📎</div><h3>Files &amp; images</h3><p>Attach images, audio, video, PDF, DOCX, PPTX, XLSX, text and code files. Extract document text with OCR and ask questions about it.</p></div>
 <div class="card"><div class="ic">✍️</div><h3>Custom instructions</h3><p>Tell Lumo how to answer once: tone, length, language. It applies to every chat.</p></div>
 <div class="card"><div class="ic">📦</div><h3>Your data is yours</h3><p>Export everything as JSON, or wipe your chats and memories whenever you like.</p></div>
+<div class="card"><div class="ic">🔎</div><h3>Deep Research</h3><p>Search the web, compare sources and build cited research reports.</p></div>
+<div class="card"><div class="ic">◇</div><h3>Artifact Studio</h3><p>Create interactive HTML tools and diagrams with editable code and live preview.</p></div>
+<div class="card"><div class="ic">🎙</div><h3>Voice mode</h3><p>Dictate prompts, use hands-free turn-taking and listen to answers aloud.</p></div>
+<div class="card"><div class="ic">🎬</div><h3>Video understanding</h3><p>Attach a video and explicitly select Gemini 2.5 Flash (video) to analyze it.</p></div>
 </div></div></section>
 
 <section class="s alt" id="models"><div class="wrap"><h2>Pick the right model</h2><p class="sub">Switch models from the top bar at any point in a conversation.</p>
 <div class="grid">
 <div class="card"><h3>GPT-6 Luna</h3><p>Fast, capable everyday model for writing, questions, study help and code.</p><span class="tag">Chat</span></div>
 <div class="card"><h3>GPT-6 Luna Pro</h3><p>The stronger option for harder reasoning, long documents and detailed answers.</p><span class="tag">Chat · Advanced</span></div>
-<div class="card"><h3>GPT Image 2</h3><p>Describe a picture, get a picture. Great for posters, ideas and illustrations.</p><span class="tag">Images</span></div>
+<div class="card"><h3>Gemini Nano Banana 2.1</h3><p>Generate images from prompts and choose 1K, 2K or 4K output resolution.</p><span class="tag">Images</span></div>
 </div></div></section>
 
 <section class="s" id="how"><div class="wrap"><h2>Up and running in a minute</h2><p class="sub">No setup, no keys to paste.</p>
@@ -56,7 +60,7 @@ try{document.documentElement.dataset.theme=localStorage.getItem('theme')||'dark'
 <details><summary>Why do I need a Puter account?</summary><p>Lumo uses Puter.js as its AI layer. Signing in to Puter lets the models run on your credits instead of a shared key.</p></details>
 <details><summary>Where is my data stored?</summary><p>Chats, memories and settings live in the Lumo database, filtered by your account so only you can read them. You can export or delete them from Settings.</p></details>
 <details><summary>I forgot my password.</summary><p>Use “Forgot password” on the login page and we will email you a reset link.</p></details>
-<details><summary>Can I upload PDFs or Word files?</summary><p>Not yet. Images and text or code files are supported today.</p></details>
+<details><summary>Which files can I upload?</summary><p>Images, audio, video, text/code files, PDF, DOCX, PPTX and XLSX are supported. Office and PDF documents are extracted with OCR; file size and extraction limits apply.</p></details>
 </div></section>
 
 <section class="s"><div class="wrap"><div class="band"><h2>Ready to try <span class="grad">Lumo</span>?</h2><p class="sub" style="margin-bottom:26px">Create an account and send your first message in under a minute.</p><a class="btn pri lg" href="/login#signup">Get started</a></div></div></section>

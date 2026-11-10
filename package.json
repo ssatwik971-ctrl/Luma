@@ -1,2 +1,14 @@
-{ "name": "luna-chat", "version": "1.0.0", "private": true, "type": "module",
-  "dependencies": { "@netlify/database": "latest", "@netlify/identity": "latest" } }
+{
+  "name": "luna-chat",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "dependencies": {
+    "@netlify/blobs": "latest",
+    "@netlify/database": "latest",
+    "@netlify/identity": "latest"
+  },
+  "scripts": {
+    "test": "node --test"
+  }
+}
