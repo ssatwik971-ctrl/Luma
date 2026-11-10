@@ -224,7 +224,7 @@ async function extractMem(u,a){try{const r=await puter.ai.chat(`From this exchan
 
 // ---- settings & memory
 async function loadMem(){const{memories}=await api('memories');S.mem=memories;const l=$('#ml');l.innerHTML=memories.length?'':'<span style="color:var(--mut)">No memories yet.</span>';memories.forEach(m=>{const d=document.createElement('div');d.className='mem';d.innerHTML='<span></span><button title="Edit memory">Edit</button><button title="Delete memory">Delete</button>';d.firstChild.textContent=m.text;const[edit,del]=d.querySelectorAll('button');edit.onclick=async()=>{const text=prompt('Edit saved memory',m.text);if(text===null||!text.trim()||text.trim()===m.text)return;try{await api('memories/'+m.id,'PATCH',{text:text.trim()});await loadMem()}catch(e){toast(e.message)}};del.onclick=async()=>{if(!confirm('Delete this memory?'))return;await api('memories/'+m.id,'DELETE');loadMem()};l.append(d)})}
-async function loadStats(){try{const{stats:t}=await api('stats');$('#acct').textContent=S.user.email+' · '+t.chats+' chats · '+t.messages+' messages · '+t.memories+' memories'}catch{$('#acct').textContent=S.user.email}}\n
+async function loadStats(){try{const{stats:t}=await api('stats');$('#acct').textContent=S.user.email+' · '+t.chats+' chats · '+t.messages+' messages · '+t.memories+' memories'}catch{$('#acct').textContent=S.user.email}}
 // Local activity is a request count only; Puter remains the source of billing/resource figures.
 function usageHistoryKey(){return 'lumo-usage-activity-v1:'+String(S.user?.email||'account')}
 function readUsageHistory(){try{const a=JSON.parse(localStorage.getItem(usageHistoryKey())||'[]');return Array.isArray(a)?a.filter(x=>x&&typeof x.day==='string'&&typeof x.model==='string'):[]}catch{return []}}
