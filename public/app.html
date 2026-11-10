@@ -60,15 +60,36 @@ const $=s=>document.querySelector(s);
 const MODELS={luna:{id:'openai/gpt-6-luna',name:'GPT-6 Luna'},pro:{id:'openai/gpt-6-luna-pro',name:'GPT-6 Luna Pro'},image:{id:'gemini-nano-banana-2.1',name:'Gemini Nano Banana 2.1',img:true}};
 const VOICE={recognition:null,mode:false};
 const S={user:null,convs:[],cur:null,msgs:[],mem:[],files:[],busy:false,stop:false,model:'luna',mode:'login',prev:'luna',imageQuality:'2K'};
-const LOCAL={db:null,dirty:new Set(),timer:null,maxTimer:null,syncing:false};
+const LOCAL={db:null,dirty:new Set(),timer:null,maxTimer:null,syncing:false,blockSync:false};
 function localId(){return crypto.randomUUID()}
 function openLocalDB(){return new Promise((resolve,reject)=>{const r=indexedDB.open('lumo-local-v1',1);r.onupgradeneeded=()=>{if(!r.result.objectStoreNames.contains('conversations'))r.result.createObjectStore('conversations',{keyPath:'id'})};r.onsuccess=()=>{LOCAL.db=r.result;resolve()};r.onerror=()=>reject(r.error)})}
 function localGet(id){return new Promise((resolve,reject)=>{const r=LOCAL.db.transaction('conversations').objectStore('conversations').get(id);r.onsuccess=()=>resolve(r.result||null);r.onerror=()=>reject(r.error)})}
 function localAll(){return new Promise((resolve,reject)=>{const r=LOCAL.db.transaction('conversations').objectStore('conversations').getAll();r.onsuccess=()=>resolve(r.result||[]);r.onerror=()=>reject(r.error)})}
-function saveLocal(c,dirty=true){return new Promise((resolve,reject)=>{c.updated_at=new Date().toISOString();if(dirty)c.pendingSync=true;const tx=LOCAL.db.transaction('conversations','readwrite');tx.objectStore('conversations').put(c);tx.oncomplete=()=>{if(dirty){LOCAL.dirty.add(c.id);scheduleSync()}updateSyncStatus();resolve()};tx.onerror=()=>reject(tx.error)})}
+function saveLocal(c,dirty=true){return new Promise((resolve,reject)=>{c.updated_at=new Date().toISOString();if(dirty){c._rev=(Number(c._rev)||0)+1;c.pendingSync=true}const tx=LOCAL.db.transaction('conversations','readwrite');tx.objectStore('conversations').put(c);tx.oncomplete=()=>{if(dirty){LOCAL.dirty.add(c.id);scheduleSync()}updateSyncStatus();resolve()};tx.onerror=()=>reject(tx.error)})}
 function updateSyncStatus(t){const e=$('#syncStatus');if(e)e.textContent=t||(LOCAL.syncing?'Syncing…':LOCAL.dirty.size?'Saved locally · waiting to sync':'All changes synced')}
 function scheduleSync(){clearTimeout(LOCAL.timer);LOCAL.timer=setTimeout(flushSync,300000);if(!LOCAL.maxTimer)LOCAL.maxTimer=setTimeout(flushSync,600000);updateSyncStatus('Saved locally · waiting to sync')}
-async function flushSync(){if(LOCAL.syncing||!LOCAL.dirty.size||!S.user)return;LOCAL.syncing=true;clearTimeout(LOCAL.timer);clearTimeout(LOCAL.maxTimer);LOCAL.timer=LOCAL.maxTimer=null;updateSyncStatus('Syncing…');try{const ids=[...LOCAL.dirty],items=[];for(const id of ids){const c=await localGet(id);if(c)items.push({id:c.id,title:c.title||'New chat',model:c.model||'luna',pinned:!!c.pinned,updated_at:c.updated_at,messages:(c.messages||[]).map(m=>({id:m.id,role:m.role,content:m.content,model:m.model||null,attachments:(m.attachments||[]).map(({_imgs,...a})=>a),created_at:m.created_at||new Date().toISOString()}))})}for(let i=0;i<items.length;i+=10){await api('sync','POST',{conversations:items.slice(i,i+10)});for(const c of items.slice(i,i+10)){LOCAL.dirty.delete(c.id);const saved=await localGet(c.id);if(saved){saved.pendingSync=false;await new Promise((resolve,reject)=>{const tx=LOCAL.db.transaction('conversations','readwrite');tx.objectStore('conversations').put(saved);tx.oncomplete=resolve;tx.onerror=()=>reject(tx.error)})}}}updateSyncStatus();await loadList()}catch(e){updateSyncStatus('Sync pending · retrying');scheduleSync();console.warn('Lumo sync deferred',e)}finally{LOCAL.syncing=false}}
+async function flushSync(){
+ if(LOCAL.blockSync||LOCAL.syncing||!LOCAL.dirty.size||!S.user)return;
+ LOCAL.syncing=true;clearTimeout(LOCAL.timer);clearTimeout(LOCAL.maxTimer);LOCAL.timer=LOCAL.maxTimer=null;updateSyncStatus('Syncing…');
+ try{
+  const ids=[...LOCAL.dirty],items=[];
+  for(const id of ids){const c=await localGet(id);if(c)items.push({id:c.id,_rev:Number(c._rev)||0,title:c.title||'New chat',model:c.model||'luna',pinned:!!c.pinned,updated_at:c.updated_at,messages:(c.messages||[]).map(m=>({id:m.id,role:m.role,content:m.content,model:m.model||null,attachments:(m.attachments||[]).map(({_imgs,...a})=>a),created_at:m.created_at||new Date().toISOString()}))})}
+  for(let i=0;i<items.length;i+=10){
+   const batch=items.slice(i,i+10);await api('sync','POST',{conversations:batch});
+   for(const sent of batch){
+    const saved=await localGet(sent.id);
+    if(saved&&(Number(saved._rev)||0)===sent._rev){
+     saved.pendingSync=false;
+     await new Promise((resolve,reject)=>{const tx=LOCAL.db.transaction('conversations','readwrite');tx.objectStore('conversations').put(saved);tx.oncomplete=resolve;tx.onerror=()=>reject(tx.error)});
+     LOCAL.dirty.delete(sent.id);
+    }else if(saved){LOCAL.dirty.add(sent.id)}
+    else LOCAL.dirty.delete(sent.id);
+   }
+  }
+  updateSyncStatus();await loadList();
+ }catch(e){updateSyncStatus('Sync pending · retrying');scheduleSync();console.warn('Lumo sync deferred',e)}
+ finally{LOCAL.syncing=false;if(LOCAL.dirty.size&&!LOCAL.blockSync)scheduleSync()}
+}
 window.addEventListener('online',()=>flushSync());window.addEventListener('pagehide',()=>{if(LOCAL.dirty.size)flushSync()});
 async function api(p,m='GET',b){const r=await fetch('/api/'+p,{method:m,headers:{'content-type':'application/json','x-requested-with':'app'},body:b?JSON.stringify(b):undefined});const j=await r.json().catch(()=>({}));if(r.status===401&&!p.startsWith('auth/')){location.replace('/login');throw new Error('Signed out')}if(!r.ok)throw new Error(j.error||('HTTP '+r.status));return j}
 function toast(t){const e=$('#toast');e.textContent=t;e.style.display='block';clearTimeout(toast.t);toast.t=setTimeout(()=>e.style.display='none',4500)}
@@ -199,7 +220,7 @@ async function loadUsage(){
  }catch(e){box.textContent='Could not load Puter usage: '+errText(e)}
 }
 $('#ex').onclick=async()=>{try{const r=await fetch('/api/export',{headers:{'x-requested-with':'app'}});if(!r.ok)throw Error('Export failed');const u=URL.createObjectURL(await r.blob()),a=document.createElement('a');a.href=u;a.download='lumo-export.json';a.click();URL.revokeObjectURL(u)}catch(e){toast(e.message)}};
-$('#dd').onclick=async()=>{if(!confirm('Permanently delete ALL your chats, memories and settings? This cannot be undone.'))return;try{await api('data','DELETE');S.cur=null;S.msgs=[];S.mem=[];render();await Promise.all([loadList(),loadMem(),loadStats()]);toast('Your data was deleted.')}catch(e){toast(e.message)}};
+$('#dd').onclick=async()=>{if(!confirm('Permanently delete ALL your chats, memories and settings? This cannot be undone.'))return;LOCAL.blockSync=true;try{while(LOCAL.syncing)await new Promise(r=>setTimeout(r,50));await api('data','DELETE');clearTimeout(LOCAL.timer);clearTimeout(LOCAL.maxTimer);LOCAL.timer=LOCAL.maxTimer=null;LOCAL.dirty.clear();await new Promise((resolve,reject)=>{const tx=LOCAL.db.transaction('conversations','readwrite');tx.objectStore('conversations').clear();tx.oncomplete=resolve;tx.onerror=()=>reject(tx.error)});S.cur=null;S.msgs=[];S.mem=[];render();await Promise.all([loadList(),loadMem(),loadStats()]);toast('Your data was deleted from this device and cloud.')}catch(e){toast('Could not delete all data: '+e.message)}finally{LOCAL.blockSync=false}};
 $('#mem').onclick=()=>{loadStats();loadUsage();const s=S.user.settings||{};$('#th').value=document.documentElement.dataset.theme;$('#ins').value=s.instructions||'';$('#am2').checked=!!s.autoMemory;$('#dlg').showModal()};
 $('#ma').onclick=async()=>{const t=$('#mn').value.trim();if(!t)return;try{await api('memories','POST',{text:t});$('#mn').value='';loadMem()}catch(e){toast(e.message)}};
 $('#mc').onclick=async()=>{if(confirm('Delete ALL memories?')){await api('memories','DELETE');loadMem()}};
