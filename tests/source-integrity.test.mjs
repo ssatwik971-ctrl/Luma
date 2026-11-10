@@ -149,3 +149,18 @@ test('audio and video attachment limits match documented Puter input ceilings', 
   assert.ok(app.includes('Audio over 10 MiB (Puter Gemini transcription limit)'));
   assert.ok(app.includes('Video over 32 MiB.'));
 });
+
+test('Phase 4 retrieves relevant saved memories without extra model calls', () => {
+  assert.ok(app.includes('function selectRelevantMemories(query)'));
+  assert.ok(app.includes('S.user.settings?.useMemories===false'));
+  assert.ok(app.includes('.slice(0,8)'));
+  assert.ok(app.includes('useMemories:$(\'#useMemories\').checked'));
+  assert.ok(app.includes('Relevant saved facts about the user'));
+});
+
+test('Phase 4 selects recent conversation context plus relevant older turns', () => {
+  assert.ok(app.includes('function selectRelevantHistory(history,query)'));
+  assert.ok(app.includes('const recentStart=history.length-20'));
+  assert.ok(app.includes('.slice(0,6)'));
+  assert.ok(app.includes('selectRelevantHistory(S.msgs.map'));
+});
