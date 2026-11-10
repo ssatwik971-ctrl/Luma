@@ -86,3 +86,11 @@ Phase 2 features are implemented on the development branch. Browser and live-ser
 - Saved memories are ranked against the current prompt using lightweight local keyword matching, with a minimum relevance threshold. Up to eight relevant memories (3,000 characters total) are included; memory use can be switched off in Settings.
 - Long chats send the most recent 20 messages plus up to six matching older messages, retaining adjacent user/assistant turns. A 28,000-character context budget trims older content for model requests; full conversation history remains saved.
 - Retrieval is local and makes no additional Puter model call. It is a lightweight relevance heuristic, not semantic search, so it may miss paraphrases or subtle connections. Smart model routing scores task complexity and remembers its on/off preference. Automatic memory extraction remains separately opt-in and can use an additional Puter request.
+
+
+## Phase 5 · Performance and database optimisation (in progress)
+- Database startup checks for the message sync unique index before running the legacy duplicate cleanup, avoiding a repeated full-table cleanup scan on normal cold starts.
+- Added user-scoped indexes for message history/export access and memory ordering.
+- Batch sync now reconciles removed messages with one set-based database delete instead of one delete query per conversation.
+- Data export groups messages in one pass rather than repeatedly filtering the full message list for each conversation.
+- Source-integrity regression checks cover these optimisations. Full test-suite execution, live database verification, and performance measurements are still pending.
