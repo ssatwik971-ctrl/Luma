@@ -254,3 +254,12 @@ test('Phase 5 strips binary image data from cloud sync and restores generated im
   assert.ok(app.includes('local.attachments?.[i]?.dataUrl?{...a,dataUrl:local.attachments[i].dataUrl}:a'));
   assert.ok(app.includes('_imgs:local._imgs||[]'));
 });
+
+test('Phase 6 responsive layout and accessible mobile navigation are present', () => {
+  assert.ok(app.includes('@media(max-width:760px)'));
+  assert.ok(app.includes('@media(prefers-reduced-motion:reduce)'));
+  assert.ok(app.includes('id="sidebarBackdrop"'));
+  assert.ok(app.includes('aria-expanded="false"'));
+  assert.ok(app.includes('function setSidebar(open)'));
+  assert.ok(app.includes('aria-label="Close navigation menu"'));
+});
