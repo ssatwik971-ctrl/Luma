@@ -13,7 +13,7 @@ test('Netlify API function parses successfully', () => {
 });
 
 test('main inline browser script parses successfully', () => {
-  const open = app.lastIndexOf('<script>');
+  const open = app.indexOf('<script>\nconst $=');
   const close = app.indexOf('</script>', open);
   assert.ok(open >= 0 && close > open, 'Expected an inline application script');
   assert.doesNotThrow(() => new vm.Script(app.slice(open + 8, close)));
