@@ -98,3 +98,9 @@ Phase 2 features are implemented on the development branch. Browser and live-ser
 
 - Conversation sidebar now uses bounded keyset pagination (50 chats per page, capped at 100) instead of fetching up to 200 records at once; a Load more control fetches subsequent pages.
 - Search requests use request sequencing so slower old queries cannot overwrite newer results.
+
+## Phase 6 — UI/UX polish (in progress)
+- Improved responsive layouts for phone, tablet and desktop, including compact chat controls, safe-area spacing and scroll behavior.
+- Added an accessible mobile navigation drawer with a dismissible backdrop, Escape-key support and expanded-state announcements.
+- Added visible keyboard focus, disabled-control states and reduced-motion support.
+- Refined mobile Artifact Studio and settings dialogs for smaller screens.
