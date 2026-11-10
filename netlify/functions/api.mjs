@@ -8,6 +8,11 @@ const J = (d, s = 200, h = {}) => new Response(JSON.stringify(d), { status: s, h
 const E = (m, s = 400) => J({ error: m }, s);
 const UUID = /^[0-9a-f-]{36}$/i;
 const clean = (v, n) => String(v ?? '').slice(0, n);
+const attachmentLimit = (type, generated = false) => generated ? 8 * 1024 * 1024
+  : type.startsWith('video/') ? 32 * 1024 * 1024
+  : type.startsWith('audio/') ? 10 * 1024 * 1024
+  : type.startsWith('image/') ? 5 * 1024 * 1024
+  : 10 * 1024 * 1024;
 
 // user_id = Netlify Identity user id. All data tables are keyed by it and every query filters on it.
 let ready;
@@ -136,7 +141,7 @@ export default async (req) => {
           for (const x of raw) {
             if (!x || typeof x !== 'object') return E('Invalid attachment');
             const name = clean(x.name, 200), type = clean(x.type, 100), size = Number(x.size) || 0;
-            if (!name || size < 0 || size > 10 * 1024 * 1024) return E('Invalid attachment name or size');
+            if (!name || size < 0 || size > attachmentLimit(type, x.gen === true)) return E('Invalid attachment name or size for this file type');
             const item = { name, type, size };
             if (x.audio === true && type.startsWith('audio/')) item.audio = true;
             if (x.video === true && type.startsWith('video/')) item.video = true;
@@ -251,7 +256,7 @@ export default async (req) => {
         for (const x of raw) {
           if (!x || typeof x !== 'object') return E('Invalid attachment');
           const name = clean(x.name, 200), type = clean(x.type, 100), size = Number(x.size) || 0;
-          if (!name || size < 0 || size > 10 * 1024 * 1024) return E('Invalid attachment name or size (10 MB maximum per file)');
+          if (!name || size < 0 || size > attachmentLimit(type, x.gen === true)) return E('Invalid attachment name or size for this file type');
           const item = { name, type, size };
           if (x.audio === true && type.startsWith('audio/')) item.audio = true;
           if (x.video === true && type.startsWith('video/')) item.video = true;
