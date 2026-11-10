@@ -65,5 +65,5 @@ test('temporary chats do not persist messages or trigger automatic memory extrac
 test('saved memories can be edited with duplicate protection', () => {
   assert.ok(api.includes("if (m === 'PATCH' && b)"));
   assert.ok(api.includes('and id<>${b} limit 1'));
-  assert.ok(app.includes("title=\\\"Edit memory\\\""));
+  assert.ok(app.includes('title="Edit memory"'));
 });
