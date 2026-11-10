@@ -105,6 +105,44 @@ export default async (req) => {
     const uid = iu.id;
     if (!(await limit('u' + uid, 240))) return E('Too many requests', 429);
 
+    if (a === 'sync' && m === 'POST') {
+      const incoming = Array.isArray(body.conversations) ? body.conversations : [];
+      if (!incoming.length || incoming.length > 50) return E('A sync batch must contain 1–50 conversations');
+      let messageCount = 0, totalChars = 0;
+      const convs = [], messages = [];
+      for (const c of incoming) {
+        if (!c || !UUID.test(c.id || '') || typeof c.title !== 'string' || !Array.isArray(c.messages) || c.messages.length > 100) return E('Invalid conversation in sync batch');
+        convs.push({ id: c.id, title: clean(c.title, 80) || 'New chat', model: ['luna','pro','image'].includes(c.model) ? c.model : 'luna', pinned: !!c.pinned, updated_at: c.updated_at || new Date().toISOString() });
+        for (const msg of c.messages) {
+          messageCount++;
+          if (!msg || !UUID.test(msg.id || '') || !['user','assistant'].includes(msg.role) || typeof msg.content !== 'string' || msg.content.length > 100000) return E('Invalid message in sync batch');
+          totalChars += msg.content.length;
+          if (totalChars > 1000000 || messageCount > 500) return E('Sync batch exceeds its size limit');
+          const raw = Array.isArray(msg.attachments) ? msg.attachments : [];
+          if (raw.length > 10) return E('A message can contain at most 10 attachments');
+          let totalText = 0; const att = [];
+          for (const x of raw) {
+            if (!x || typeof x !== 'object') return E('Invalid attachment');
+            const name = clean(x.name, 200), type = clean(x.type, 100), size = Number(x.size) || 0;
+            if (!name || size < 0 || size > 10 * 1024 * 1024) return E('Invalid attachment name or size');
+            const item = { name, type, size };
+            if (typeof x.text === 'string') { if (x.text.length > 60000) return E('Attachment text too long'); totalText += x.text.length; if (totalText > 180000) return E('Combined attachment text too long'); item.text = x.text; }
+            if (x.gen === true) { if (typeof x.dataUrl !== 'string' || x.dataUrl.length > 8 * 1024 * 1024 || !/^data:image\\/(png|jpeg|webp);base64,/i.test(x.dataUrl)) return E('Invalid generated image attachment'); item.gen = true; item.dataUrl = x.dataUrl; }
+            att.push(item);
+          }
+          messages.push({ id: msg.id, conv_id: c.id, role: msg.role, content: msg.content, model: clean(msg.model, 20) || null, attachments: att, created_at: msg.created_at || new Date().toISOString() });
+        }
+      }
+      await sql`insert into conversations(id,user_id,model,title,pinned,updated_at)
+        select x.id,x.user_id,x.model,x.title,x.pinned,x.updated_at from jsonb_to_recordset(${JSON.stringify(convs.map(c => ({...c,user_id:uid})))}::jsonb) as x(id uuid,user_id uuid,model text,title text,pinned boolean,updated_at timestamptz)
+        on conflict(id) do update set title=excluded.title,model=excluded.model,pinned=excluded.pinned,updated_at=greatest(conversations.updated_at,excluded.updated_at) where conversations.user_id=excluded.user_id`;
+      if (messages.length) await sql`insert into messages(id,conv_id,user_id,role,content,model,attachments,created_at)
+        select x.id,x.conv_id,${uid},x.role,x.content,x.model,x.attachments,x.created_at
+        from jsonb_to_recordset(${JSON.stringify(messages)}::jsonb) as x(id uuid,conv_id uuid,role text,content text,model text,attachments jsonb,created_at timestamptz)
+        join conversations c on c.id=x.conv_id and c.user_id=${uid}
+        on conflict(id) do nothing`;
+      return J({ ok: true, conversations: convs.length, messages: messages.length });
+    }
     if (a === 'stats' && m === 'GET') {
       const [s] = await sql`select (select count(*)::int from conversations where user_id=${uid}) chats, (select count(*)::int from messages where user_id=${uid}) messages, (select count(*)::int from memories where user_id=${uid}) memories`;
       return J({ stats: s });
