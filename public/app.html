@@ -121,12 +121,7 @@ async function toDataUrl(src){if(src.startsWith('data:'))return src;const b=awai
 
 async function send(text,files){
  try{await ensurePuter()}catch(e){return toast('Puter sign-in is required to use AI models.')}
- try{
-  if(!S.cur){const{conversation}=await api('conversations','POST',{model:S.model,title:(text||files[0].name).slice(0,40)});S.cur=conversation.id}
-  const att=files.map(({dataUrl,...r})=>({...r}));
-  const{message}=await api(`conversations/${S.cur}/messages`,'POST',{role:'user',content:text,attachments:att});
-  message.attachments=att;message._imgs=files.filter(f=>f.dataUrl).map(f=>f.dataUrl);S.msgs.push(message);render();loadList();
- }catch(e){return toast(e.message)}
+ try{if(!S.cur){S.cur=localId();await saveLocal({id:S.cur,title:(text||files[0]?.name||'New chat').slice(0,40),model:S.model,pinned:false,messages:[],pendingSync:true})}const att=files.map(({dataUrl,...r})=>({...r}));const message={id:localId(),role:'user',content:text,model:S.model,attachments:att,_imgs:files.filter(f=>f.dataUrl).map(f=>f.dataUrl),created_at:new Date().toISOString()};S.msgs.push(message);const c=await localGet(S.cur);c.messages=S.msgs;c.model=S.model;c.pendingSync=true;await saveLocal(c);render();loadList()}catch(e){return toast(e.message)}
  await gen()}
 async function gen(){
  busy(true);S.stop=false;const M=MODELS[S.model],w=$('#mw'),d=document.createElement('div');d.className='m assistant';d.innerHTML='<div class="b" style="color:var(--mut)">Thinking…</div>';w.append(d);$('#msgs').scrollTop=1e9;
@@ -145,7 +140,7 @@ async function gen(){
    else acc=r?.message?.content?.toString?.()||String(r);
   }
   if(!acc&&!atts.length)throw Error('The model returned an empty response.');
-  if(S.research&&!M.img)atts.push({name:'deep-research-report.md',type:'text/markdown',size:acc.length,text:acc});const{message}=await api(`conversations/${S.cur}/messages`,'POST',{role:'assistant',content:acc,model:S.model,attachments:atts});S.msgs.push(message);recordModelActivity(S.model);
+  if(S.research&&!M.img)atts.push({name:'deep-research-report.md',type:'text/markdown',size:acc.length,text:acc});const message={id:localId(),role:'assistant',content:acc,model:S.model,attachments:atts,created_at:new Date().toISOString()};S.msgs.push(message);const localConv=await localGet(S.cur);localConv.messages=S.msgs;localConv.pendingSync=true;await saveLocal(localConv);recordModelActivity(S.model);
   if(!M.img&&S.user.settings?.autoMemory)extractMem(last.content,acc);
   if(VOICE.mode&&!M.img&&acc)speakText(acc);
  }catch(e){const t=errText(e);d.innerHTML='';const x=document.createElement('div');x.className='err';x.textContent='Request failed: '+t+(/fund|credit|balance|usage|limit|quota/i.test(t)?' — this may be a Puter credit/usage limit on your Puter account.':'')+' (No other model was substituted.)';const rb=document.createElement('button');rb.textContent='Retry';rb.onclick=()=>{d.remove();gen()};x.append(document.createElement('br'),rb);d.append(x);busy(false);return}
