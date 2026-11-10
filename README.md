@@ -61,3 +61,9 @@ Phase 2 features are being implemented on the development branch and still requi
 
 
 **Cost-conscious design:** Multi-model Arena was removed because generating two answers to one prompt would consume two Puter model requests. Lumo now uses one selected/routed model request per response.
+
+
+## Phase 2 · Remaining chat controls
+- **Temporary chats** are held in the current page session only. Their messages are not written to IndexedDB, cloud history, or automatic memory extraction; closing or refreshing the page discards them.
+- **Memory management** supports editing and deleting individual saved memories. Duplicate edits are rejected by the API.
+- **Cost control:** Arena mode is removed. A normal response uses one selected/routed model request. Automatic memory extraction remains opt-in because it makes an additional model request.
