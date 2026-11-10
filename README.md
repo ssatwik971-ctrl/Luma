@@ -5,7 +5,7 @@
 - `/api/health` shows whether Identity and the database are reachable (no secrets). Open it first if login or sign-up fails.
 
 ## Architecture
-- **AI**: Puter.js only, in the browser. Models: `openai/gpt-6-luna`, `openai/gpt-5.6-luna-pro` (`puter.ai.chat`, streaming, image input), `openai/gpt-image-2` (DALL·E 3 is deprecated on Puter) (`puter.ai.txt2img`). Users sign in to Puter and pay from their own credits. No AI keys anywhere. No model is ever substituted: failures show an error + Retry.
+- **AI**: Puter.js only, in the browser. Models: `openai/gpt-6-luna`, `openai/gpt-6-luna-pro` (`puter.ai.chat`, streaming, image input), `black-forest-labs/flux-schnell` (DALL·E 3 is deprecated on Puter) (`puter.ai.txt2img`). Users sign in to Puter and pay from their own credits. No AI keys anywhere. No model is ever substituted: failures show an error + Retry.
 - **Auth**: Netlify Identity via `@netlify/identity` (server-side `signup/login/logout/getUser`, `requestPasswordRecovery`, `recoverPassword`). Identity sends the reset email itself.
 - **Backend**: one Netlify Function `netlify/functions/api.mjs` (`/api/*`): conversations, messages, memories, settings, rate limiting. Every query is filtered by the Identity user id.
 - **Database**: Netlify Database (`@netlify/database`). Tables are created on first request (`create table if not exists`).
@@ -29,3 +29,10 @@
 
 ## Known limits
 PDF/Word upload unsupported. Uploaded images are analysed in-session; only filenames sync across devices. Identity does not work under `netlify dev` (test on a deploy). Not end-to-end tested.
+
+
+## Advanced tools
+- Deep Research uses Puter.js web search with GPT-6 Luna Pro to prepare source-linked reports. Availability depends on Puter's model/tool access.
+- Artifact Studio generates standalone HTML/CSS/JS mini-apps and diagrams, with editable source and sandboxed live preview. Artifacts can be saved in conversations and downloaded.
+- Voice uses browser speech recognition for dictation and hands-free turn-taking, plus speech synthesis for reading answers aloud. Browser/device support and microphone permission are required.
+- Image generation uses FLUX.1 Schnell through Puter.js (black-forest-labs/flux-schnell), listed by Puter at approximately $0.0027 per image. Actual usage charges and availability can change; each user pays through their Puter account.
