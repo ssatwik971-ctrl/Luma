@@ -132,6 +132,8 @@ export default async (req) => {
             const name = clean(x.name, 200), type = clean(x.type, 100), size = Number(x.size) || 0;
             if (!name || size < 0 || size > 10 * 1024 * 1024) return E('Invalid attachment name or size');
             const item = { name, type, size };
+            if (x.audio === true && type.startsWith('audio/')) item.audio = true;
+            if (x.video === true && type.startsWith('video/')) item.video = true;
             if (typeof x.text === 'string') { if (x.text.length > 60000) return E('Attachment text too long'); totalText += x.text.length; if (totalText > 180000) return E('Combined attachment text too long'); item.text = x.text; }
             if (x.gen === true) { if (typeof x.dataUrl !== 'string' || x.dataUrl.length > 8 * 1024 * 1024 || !/^data:image\/(png|jpeg|webp);base64,/i.test(x.dataUrl)) return E('Invalid generated image attachment'); item.gen = true; item.dataUrl = x.dataUrl; }
             att.push(item);
@@ -221,6 +223,8 @@ export default async (req) => {
           const name = clean(x.name, 200), type = clean(x.type, 100), size = Number(x.size) || 0;
           if (!name || size < 0 || size > 10 * 1024 * 1024) return E('Invalid attachment name or size (10 MB maximum per file)');
           const item = { name, type, size };
+          if (x.audio === true && type.startsWith('audio/')) item.audio = true;
+          if (x.video === true && type.startsWith('video/')) item.video = true;
           if (typeof x.text === 'string') {
             if (x.text.length > 60000) return E('Extracted attachment text exceeds 60,000 characters');
             totalText += x.text.length;
