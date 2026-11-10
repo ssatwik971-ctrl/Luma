@@ -80,3 +80,9 @@ Phase 2 features are implemented on the development branch. Browser and live-ser
 - Audio files can be attached and explicitly transcribed with Puter.js `puter.ai.speech2txt()`. Transcription is user-triggered, not automatic; the transcript is inserted into the composer for review before sending. The transcription request uses Puter resources and may incur usage.
 - Video files can be attached (up to 20 MB, one per message) and analyzed with the explicit **Gemini 2.5 Flash (video)** model option. Lumo never silently switches models; select that model before sending a video. Video analysis is one chat request, but video-capable model support and billing depend on Puter's current service availability. Images are capped at 5 MB for inline model input.
 - Video File objects are retained in IndexedDB on the same device and restored when a synced conversation is reopened there; raw video bytes are never uploaded to cloud history and are unavailable on other devices. The app labels this device-only limitation in the chat.
+
+
+## Phase 4 · Context intelligence (first increment)
+- Saved memories are ranked against the current prompt using lightweight local keyword matching. Only up to eight relevant memories are included, with a 3,000-character cap; users can switch memory use off in Settings.
+- Long chats send the most recent 20 turns plus up to six older turns that match the current prompt. The full conversation remains saved; this only selects the context sent for the current model request.
+- Retrieval is local and makes no additional Puter model call. It is a relevance heuristic, not semantic search, so it may miss paraphrases or subtle connections.
