@@ -128,7 +128,7 @@ export default async (req) => {
       if (['light', 'dark'].includes(body.theme)) s.theme = body.theme;
       if (typeof body.instructions === 'string') s.instructions = clean(body.instructions, 2000);
       if (typeof body.autoMemory === 'boolean') s.autoMemory = body.autoMemory;
-      if (['luna', 'pro', 'dalle'].includes(body.model)) s.model = body.model;
+      if (['luna', 'pro', 'image'].includes(body.model)) s.model = body.model;
       const [u] = await sql`insert into profiles(user_id,settings) values(${uid},${JSON.stringify(s)}::jsonb) on conflict(user_id) do update set settings = profiles.settings || ${JSON.stringify(s)}::jsonb returning settings`;
       return J({ settings: u.settings });
     }
@@ -146,7 +146,7 @@ export default async (req) => {
         const q = '%' + clean(url.searchParams.get('q'), 100).replace(/[%_\\]/g, '\\$&') + '%';
         return J({ conversations: await sql`select id,title,model,pinned,updated_at from conversations c where user_id=${uid} and (title ilike ${q} or exists(select 1 from messages m where m.conv_id=c.id and m.content ilike ${q})) order by pinned desc, updated_at desc limit 200` });
       }
-      if (!b && m === 'POST') { const [r] = await sql`insert into conversations(user_id,model,title) values(${uid},${['luna','pro','dalle'].includes(body.model) ? body.model : 'luna'},${clean(body.title || 'New chat', 80)}) returning id,title,model,pinned,updated_at`; return J({ conversation: r }); }
+      if (!b && m === 'POST') { const [r] = await sql`insert into conversations(user_id,model,title) values(${uid},${['luna','pro','image'].includes(body.model) ? body.model : 'luna'},${clean(body.title || 'New chat', 80)}) returning id,title,model,pinned,updated_at`; return J({ conversation: r }); }
       const [own] = await sql`select id from conversations where id=${b} and user_id=${uid}`;
       if (!own) return E('Not found', 404);
       if (!c && m === 'GET') return J({ messages: await sql`select id,role,content,model,attachments,created_at from messages where conv_id=${b} and user_id=${uid} order by seq` });
