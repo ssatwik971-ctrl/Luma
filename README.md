@@ -48,3 +48,14 @@
 - Failed syncs remain queued locally and retry later; opening the app or reconnecting to the internet resumes synchronization. A page-close sync is attempted, but browsers may terminate it, so the persistent queue is the recovery mechanism.
 - The chat header reports whether changes are saved locally, syncing, or synced. AI requests still run immediately through Puter; only database persistence is deferred.
 - Local browser storage is device/browser-specific and is not a substitute for cloud backup until the sync completes. Clear site data or using another browser/device can remove or hide unsynced local conversations.
+
+
+## Phase 2 · Advanced AI chat (in progress)
+- **Smart model routing** can be enabled from the composer. It selects Luna Pro for prompts that look complex or long, and Luna for simpler prompts. Image generation remains on the selected image model.
+- **Multi-model Arena** sends the same prompt and conversation context to Luna and Luna Pro in parallel, then displays both answers for comparison. This makes two model requests and can use more Puter resources.
+- **Branch here** creates a separate conversation from the selected message; the original conversation remains unchanged.
+- **Regenerate with another model** lets the latest assistant response be retried with Luna or Luna Pro.
+- **Conversation folders** can be assigned from the folder icon in the sidebar. Folder metadata syncs with the conversation.
+- **Memory deduplication** avoids inserting an exact case-insensitive duplicate memory.
+
+Phase 2 features are being implemented on the development branch and still require browser and live-service testing before production use.
