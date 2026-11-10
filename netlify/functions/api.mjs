@@ -245,7 +245,9 @@ export default async (req) => {
       if (typeof body.useMemories === 'boolean') s.useMemories = body.useMemories;
       if (typeof body.autoRoute === 'boolean') s.autoRoute = body.autoRoute;
       if (['luna', 'pro', 'video', 'image'].includes(body.model)) s.model = body.model;
-      if (['1K', '2K', '4K'].includes(body.imageQuality)) s.imageQuality = body.imageQuality;
+      if (['gpt-image-2.5-flare', 'gpt-image-2.6-flare'].includes(body.imageModel)) s.imageModel = body.imageModel;
+      if (['low', 'medium', 'high', 'xhigh', 'max', 'auto'].includes(body.imageQuality)) s.imageQuality = body.imageQuality;
+      if (['1024x1024', '1536x1024', '1024x1536', '2048x2048', '2048x1152', '1152x2048', '3840x2160', '2160x3840'].includes(body.imageResolution)) s.imageResolution = body.imageResolution;
       const [u] = await sql`insert into profiles(user_id,settings) values(${uid},${JSON.stringify(s)}::jsonb) on conflict(user_id) do update set settings = profiles.settings || ${JSON.stringify(s)}::jsonb returning settings`;
       return J({ settings: u.settings });
     }
