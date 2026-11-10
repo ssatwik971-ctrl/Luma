@@ -218,7 +218,8 @@ function selectRelevantMemories(query){
   .filter(x=>x.score>=2).sort((a,b)=>b.score-a.score||a.i-b.i).slice(0,8)
   .reduce((out,x)=>out+(out?'\\n':'')+'- '+x.text,'').slice(0,3000)
 }
-function fitContextBudget(history,maxChars=28000){let out=history.slice(),size=out.reduce((n,m)=>n+String(m.content||'').length,0);while(out.length>1&&size>maxChars){size-=String(out[0].content||'').length;out.shift()}if(out.length&&String(out[out.length-1].content||'').length>maxChars)out[out.length-1]={...out[out.length-1],content:String(out[out.length-1].content||'').slice(-maxChars)};return out}\nfunction selectRelevantHistory(history,query){
+function fitContextBudget(history,maxChars=28000){let out=history.slice(),size=out.reduce((n,m)=>n+String(m.content||'').length,0);while(out.length>1&&size>maxChars){size-=String(out[0].content||'').length;out.shift()}if(out.length&&String(out[out.length-1].content||'').length>maxChars)out[out.length-1]={...out[out.length-1],content:String(out[out.length-1].content||'').slice(-maxChars)};return out}
+function selectRelevantHistory(history,query){
  if(history.length<=20)return history;
  const recentStart=history.length-20,recent=history.slice(recentStart),terms=contextTerms(query);
  if(terms.length<2)return recent;
