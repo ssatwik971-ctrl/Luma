@@ -214,8 +214,24 @@ export default async (req) => {
     }
     if (a === 'conversations') {
       if (!b && m === 'GET') {
+        const q = clean(url.searchParams.get('q'), 100).trim();
+        const pattern = '%' + q.replace(/[%_\\]/g, '\\      if (!b && m === 'GET') {
         const q = '%' + clean(url.searchParams.get('q'), 100).replace(/[%_\\]/g, '\\$&') + '%';
         return J({ conversations: await sql`select id,title,model,pinned,folder,updated_at from conversations c where user_id=${uid} and (title ilike ${q} or exists(select 1 from messages m where m.conv_id=c.id and m.content ilike ${q})) order by pinned desc, updated_at desc limit 200` });
+      }') + '%';
+        const limitValue = Math.max(1, Math.min(100, Number.parseInt(url.searchParams.get('limit') || '50', 10) || 50));
+        let cursor = null;
+        try { cursor = url.searchParams.get('cursor') ? JSON.parse(url.searchParams.get('cursor')) : null; } catch { return E('Invalid pagination cursor'); }
+        if (cursor && (!UUID.test(cursor.id || '') || !['true','false'].includes(String(cursor.pinned)) || !Number.isFinite(Date.parse(cursor.updated_at)))) return E('Invalid pagination cursor');
+        const rows = await sql`select id,title,model,pinned,folder,updated_at from conversations c
+          where user_id=${uid}
+          and (${q} = '' or c.title ilike ${pattern} or exists(select 1 from messages m where m.conv_id=c.id and m.user_id=${uid} and m.content ilike ${pattern}))
+          and (${cursor ? true : false} = false or (c.pinned,c.updated_at,c.id) < (${cursor ? cursor.pinned === true || cursor.pinned === 'true' : false},${cursor ? cursor.updated_at : '1970-01-01T00:00:00.000Z'}::timestamptz,${cursor ? cursor.id : '00000000-0000-0000-0000-000000000000'}::uuid))
+          order by pinned desc, updated_at desc, id desc limit ${limitValue + 1}`;
+        const hasMore = rows.length > limitValue, conversations = rows.slice(0, limitValue);
+        const last = conversations[conversations.length - 1];
+        const nextCursor = hasMore && last ? { pinned: last.pinned, updated_at: last.updated_at, id: last.id } : null;
+        return J({ conversations, nextCursor, hasMore });
       }
       if (!b && m === 'POST') { const [r] = await sql`insert into conversations(user_id,model,title) values(${uid},${['luna','pro','image'].includes(body.model) ? body.model : 'luna'},${clean(body.title || 'New chat', 80)}) returning id,title,model,pinned,updated_at`; return J({ conversation: r }); }
       const [own] = await sql`select id from conversations where id=${b} and user_id=${uid}`;
