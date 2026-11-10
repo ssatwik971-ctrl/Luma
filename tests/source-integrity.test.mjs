@@ -124,7 +124,9 @@ test('audio and video attachment metadata survives cloud sync and direct message
   assert.equal((api.match(/if \(x\.video === true && type\.startsWith\('video\/'\)\) item\.video = true/g)||[]).length, 2);
 });
 
-test('usage dashboard includes video model activity', () => {
+test('usage dashboard includes video model activity and full Puter app API breakdown', () => {
+  assert.ok(app.includes('getDetailedAppUsage(puter.appID)'));
+  assert.ok(!app.includes('items.slice(0,12)'));
   assert.ok(app.includes("models=['luna','pro','video','image']"));
   assert.ok(app.includes("video:'Gemini 2.5 Flash (video)'"));
 });
@@ -279,11 +281,13 @@ test('Phase 5 chat sidebar supports loading additional pages and cancels stale s
 });
 
 test('Phase 5 IndexedDB migration indexes pending local changes', () => {
-  assert.ok(app.includes("indexedDB.open(name,2)"));
-  assert.ok(app.includes("createIndex('pendingSync','pendingSync'"));
+  assert.ok(app.includes("indexedDB.open(name,3)"));
+  assert.ok(app.includes("deleteIndex('pendingSync')"));
   assert.ok(app.includes("function localDirtyAll()"));
   assert.ok(!app.includes('function localAll()'));
-  assert.ok(app.includes("index('pendingSync').getAll(true)"));
+  assert.ok(app.includes("objectStore('conversations').getAll()"));
+  assert.ok(app.includes("filter(c=>c&&c.pendingSync===true)"));
+  assert.ok(!app.includes("getAll(true)"));
 });
 
 test('Phase 5 strips binary image data from cloud sync and restores generated images locally', () => {
