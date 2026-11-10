@@ -83,3 +83,18 @@ test('locally stored image inputs are restored when reopening a synced conversat
   assert.ok(app.includes('_localOnlyImages'));
   assert.ok(app.includes('Attached image preview (stored on this device)'));
 });
+
+test('audio transcription and explicit video model selection use supported Puter APIs', () => {
+  assert.ok(app.includes('puter.ai.speech2txt(f.file'));
+  assert.ok(app.includes("provider:'openai'"));
+  assert.ok(app.includes("video:{id:'google/gemini-2.5-flash'"));
+  assert.ok(app.includes("S.model!=='video'"));
+  assert.ok(app.includes("No automatic model switch is made."));
+  assert.ok(app.includes("puter.ai.chat(prompt,last._video,{model:M.id,stream:true})"));
+  assert.ok(app.includes("if(!S.autoRoute||S.model==='image'||S.model==='video')"));
+});
+
+test('video model is accepted by conversation sync and user settings', () => {
+  assert.ok(api.includes("['luna','pro','video','image']"));
+  assert.ok(api.includes("['luna', 'pro', 'video', 'image']"));
+});
