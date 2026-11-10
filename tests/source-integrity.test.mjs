@@ -332,5 +332,5 @@ test('Phase 7: health diagnostics expose service status without returning secret
   const health = api.slice(start, end);
   assert.ok(health.includes('identity: await identityInfo(origin)'));
   assert.ok(health.includes('database: { ok: false }'));
-  assert.ok(!/process\\.env|password|secret|token/i.test(health));
+  assert.ok(!/process\.env|password|secret|token/i.test(health));
 });
