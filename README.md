@@ -84,5 +84,5 @@ Phase 2 features are implemented on the development branch. Browser and live-ser
 
 ## Phase 4 · Context intelligence
 - Saved memories are ranked against the current prompt using lightweight local keyword matching, with a minimum relevance threshold. Up to eight relevant memories (3,000 characters total) are included; memory use can be switched off in Settings.
-- Long chats send the most recent 20 messages plus up to six matching older messages, retaining adjacent user/assistant turns for context. The complete conversation remains saved; only the current model request's context is selected.
-- Retrieval is local and makes no additional Puter model call. It is a lightweight relevance heuristic, not semantic search, so it may miss paraphrases or subtle connections. Automatic memory extraction remains separately opt-in and can use an additional Puter request.
+- Long chats send the most recent 20 messages plus up to six matching older messages, retaining adjacent user/assistant turns. A 28,000-character context budget trims older content for model requests; full conversation history remains saved.
+- Retrieval is local and makes no additional Puter model call. It is a lightweight relevance heuristic, not semantic search, so it may miss paraphrases or subtle connections. Smart model routing scores task complexity and remembers its on/off preference. Automatic memory extraction remains separately opt-in and can use an additional Puter request.
