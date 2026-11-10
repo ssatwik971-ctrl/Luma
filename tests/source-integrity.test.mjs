@@ -304,7 +304,7 @@ test('Phase 7: sync batches and message attachments enforce bounded input sizes'
   assert.ok(api.includes('messageCount > 500'));
   assert.ok(api.includes('totalChars > 1000000'));
   assert.ok(api.includes('raw.length > 10'));
-  assert.ok(api.includes('size > 10 * 1024 * 1024'));
+  assert.ok(api.includes('attachmentLimit(type, x.gen === true)'));
   assert.ok(api.includes('totalText > 180000'));
 });
 
@@ -337,7 +337,7 @@ test('Phase 7: health diagnostics expose service status without returning secret
 
 test('video attachment metadata accepts the frontend 32 MiB ceiling in both API paths', () => {
   assert.ok(api.includes("type.startsWith('video/') ? 32 * 1024 * 1024"));
-  assert.equal((api.match(/attachmentLimit\\(type, x\\.gen === true\\)/g)||[]).length, 2);
+  assert.equal(api.split('attachmentLimit(type, x.gen === true)').length - 1, 2);
   assert.ok(api.includes("type.startsWith('audio/') ? 10 * 1024 * 1024"));
   assert.ok(api.includes("type.startsWith('image/') ? 5 * 1024 * 1024"));
 });
