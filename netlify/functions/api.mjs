@@ -140,16 +140,16 @@ export default async (req) => {
       await sql`insert into conversations(id,user_id,model,title,pinned,updated_at)
         select x.id,x.user_id,x.model,x.title,x.pinned,x.updated_at from jsonb_to_recordset(${JSON.stringify(convs.map(c => ({...c,user_id:uid})))}::jsonb) as x(id uuid,user_id uuid,model text,title text,pinned boolean,updated_at timestamptz)
         on conflict(id) do update set title=excluded.title,model=excluded.model,pinned=excluded.pinned,updated_at=greatest(conversations.updated_at,excluded.updated_at) where conversations.user_id=excluded.user_id`;
-      for (const c of convs) {
-        const keep = messages.filter(m => m.conv_id === c.id).map(m => m.id);
-        if (keep.length) await sql`delete from messages where conv_id=${c.id} and user_id=${uid} and not (id = any(${keep}::uuid[]))`;
-        else await sql`delete from messages where conv_id=${c.id} and user_id=${uid}`;
-      }
       if (messages.length) await sql`insert into messages(id,conv_id,user_id,role,content,model,attachments,created_at)
         select x.id,x.conv_id,${uid},x.role,x.content,x.model,x.attachments,x.created_at
         from jsonb_to_recordset(${JSON.stringify(messages)}::jsonb) as x(id uuid,conv_id uuid,role text,content text,model text,attachments jsonb,created_at timestamptz)
         join conversations c on c.id=x.conv_id and c.user_id=${uid}
         on conflict(id,user_id) do nothing`;
+      for (const c of convs) {
+        const keep = messages.filter(m => m.conv_id === c.id).map(m => m.id);
+        if (keep.length) await sql`delete from messages where conv_id=${c.id} and user_id=${uid} and not (id = any(${keep}::uuid[]))`;
+        else await sql`delete from messages where conv_id=${c.id} and user_id=${uid}`;
+      }
       return J({ ok: true, conversations: convs.length, messages: messages.length });
     }
     if (a === 'stats' && m === 'GET') {
