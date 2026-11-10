@@ -79,12 +79,12 @@ Phase 2 features are implemented on the development branch. Browser and live-ser
 
 ### Phase 3 · Audio and video input
 - Audio files can be attached and explicitly transcribed with Puter.js `puter.ai.speech2txt()`. Transcription is user-triggered, not automatic; the transcript is inserted into the composer for review before sending. The transcription request uses Puter resources and may incur usage.
-- Video files can be attached (up to 20 MB, one per message) and analyzed with the explicit **Gemini 2.5 Flash (video)** model option. Lumo never silently switches models; select that model before sending a video. Video analysis is one chat request, but video-capable model support and billing depend on Puter's current service availability. Images are capped at 5 MB for inline model input.
+- Video files can be attached (up to 32 MiB, one per message) and analyzed with the explicit **Gemini 2.5 Flash (video)** model option. Lumo never silently switches models; select that model before sending a video. Video analysis is one chat request, but video-capable model support and billing depend on Puter's current service availability. Images are capped at 5 MB for inline model input.
 - Video File objects are retained in IndexedDB on the same device and restored when a synced conversation is reopened there; raw video bytes are never uploaded to cloud history and are unavailable on other devices. The app labels this device-only limitation in the chat.
 
 
 ## Phase 4 · Context intelligence
-- Saved memories are ranked against the current prompt using lightweight local keyword matching, with a minimum relevance threshold. Up to eight relevant memories (3,000 characters total) are included; memory use can be switched off in Settings.
+- Saved memories are ranked locally using normalized terms, lightweight concept groups and phrase matching, improving recall across common paraphrases without an extra model request. Up to eight relevant memories (3,000 characters total) are included; memory use can be switched off in Settings. This is concept-aware lexical retrieval, not embedding-based semantic search.
 - Long chats send the most recent 20 messages plus up to six matching older messages, retaining adjacent user/assistant turns. A 28,000-character context budget trims older content for model requests; full conversation history remains saved.
 - Retrieval is local and makes no additional Puter model call. It is a lightweight relevance heuristic, not semantic search, so it may miss paraphrases or subtle connections. Smart model routing scores task complexity and remembers its on/off preference. Automatic memory extraction remains separately opt-in and can use an additional Puter request.
 
@@ -113,3 +113,11 @@ Phase 2 features are implemented on the development branch. Browser and live-ser
 - Automated tests are configured in GitHub Actions on development-branch pushes and pull requests targeting main.
 - Remaining before release: obtain a successful CI run, run the complete test suite in the CI environment, test Netlify Identity and Database on a deployed preview, exercise Puter chat/image/audio/video paths, verify local/cloud sync across browsers/devices, and complete responsive/accessibility and privacy/security checks.
 - No production deployment or merge to main is authorized by this phase.
+
+
+## Reliability fixes · November 2026
+- Video attachment metadata now accepts the same 32 MiB ceiling as the browser upload control. Audio, image, generated-image and document limits remain separately bounded; both batch sync and direct message endpoints apply the same per-type validation.
+- Voice dictation appends the finalized transcript after trimming it, preserving any text already in the composer.
+- The application shell now loads dedicated `/app.css` and `/app.js` assets instead of keeping the full stylesheet and application script inline.
+- The public landing page now describes Nano Banana 2.1, supported document OCR, audio/video input, Deep Research, Artifact Studio and Voice mode accurately.
+- Source-integrity tests cover the modular assets, per-type attachment ceilings, local concept-aware memory retrieval and voice transcript handling.
