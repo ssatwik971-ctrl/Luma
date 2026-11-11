@@ -271,7 +271,10 @@ function usageCard(label,value,detail=''){const d=document.createElement('div');
 function usageSection(title){const h=document.createElement('h3');h.textContent=title;h.style.gridColumn='1/-1';h.style.margin='10px 0 0';return h}
 function usageBar(label,value,max,detail=''){const wrap=document.createElement('div');wrap.style.cssText='grid-column:1/-1;margin:3px 0';const top=document.createElement('div');top.style.cssText='display:flex;justify-content:space-between;gap:8px;font-size:13px;margin-bottom:5px';const l=document.createElement('span');l.textContent=label;const v=document.createElement('span');v.textContent=detail||String(value);top.append(l,v);const track=document.createElement('div');track.style.cssText='height:8px;border-radius:8px;background:var(--bg);overflow:hidden';const fill=document.createElement('div');fill.style.cssText='height:100%;border-radius:8px;background:linear-gradient(90deg,var(--ac),var(--ac2));width:'+Math.max(0,Math.min(100,max?value/max*100:0))+'%';track.append(fill);wrap.append(top,track);return wrap}
 function prettyUsageKey(k){const parts=String(k).split(':').filter(Boolean);if(parts.length>=2)return{service:parts[0],model:parts.slice(1,-1).join(':')||parts[1],kind:parts.length>2?parts[parts.length-1]:''};return{service:'',model:String(k),kind:''}}
+async function showPuterWho(){const el=$('#puterWho');try{if(!puter.auth.isSignedIn()){el.textContent='Puter account: not signed in';return}const u=await puter.auth.getUser();el.textContent='Puter account (used for all AI calls): '+(u?.username||u?.email||'unknown')}catch{el.textContent=''}}
+$('#puterSwitch').onclick=async()=>{try{await puter.auth.signOut()}catch{}try{await puter.auth.signIn();toast('Signed in to Puter.');showPuterWho();loadUsage()}catch(e){toast('Puter sign-in was cancelled or failed: '+errText(e));showPuterWho()}};
 async function loadUsage(){
+ showPuterWho();
  const box=$('#usageDash');box.innerHTML='';box.textContent='Loading usage…';
  try{
   if(!puter.auth.isSignedIn())throw Error('Sign in to Puter to view account usage.');
