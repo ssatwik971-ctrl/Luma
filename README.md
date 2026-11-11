@@ -5,7 +5,7 @@
 - `/api/health` shows whether Identity and the database are reachable (no secrets). Open it first if login or sign-up fails.
 
 ## Architecture
-- **AI**: Puter.js only, in the browser. Models: `openai/gpt-6-luna`, `openai/gpt-6-luna-pro` (`puter.ai.chat`, streaming, image input), `gemini-nano-banana-2.1` (Nano Banana 2.1; selectable 1K/2K/4K output) (`puter.ai.txt2img`). PDF, DOCX, PPTX and XLSX text extraction uses Puter Mistral OCR (`puter.ai.img2txt`). Users sign in to Puter and pay from their own credits. No AI keys anywhere. No model is ever substituted: failures show an error + Retry.
+- **AI**: Puter.js only, in the browser. Models: `openai/gpt-6-luna`, `openai/gpt-6-luna-pro` (`puter.ai.chat`, streaming, image input), `gpt-image-2.6-flare` (quality Low/Medium/High, 1K or 2K) and `@cf/black-forest-labs/flux-1-schnell` (fixed 1024px) (`puter.ai.txt2img`). PDF, DOCX, PPTX and XLSX text extraction uses Puter Mistral OCR (`puter.ai.img2txt`). Users sign in to Puter and pay from their own credits. No AI keys anywhere. No model is ever substituted: failures show an error + Retry.
 - **Auth**: Netlify Identity via `@netlify/identity` (server-side `signup/login/logout/getUser`, `requestPasswordRecovery`, `recoverPassword`). Identity sends the reset email itself.
 - **Backend**: one Netlify Function `netlify/functions/api.mjs` (`/api/*`): conversations, messages, memories, settings, rate limiting. Every query is filtered by the Identity user id.
 - **Database**: Netlify Database (`@netlify/database`). Tables are created on first request (`create table if not exists`).
@@ -40,7 +40,7 @@
 - Deep Research uses Puter.js web search with GPT-6 Luna Pro to prepare source-linked reports. Availability depends on Puter's model/tool access.
 - Artifact Studio generates standalone HTML/CSS/JS mini-apps and diagrams, with editable source and sandboxed live preview. Artifacts can be saved in conversations and downloaded.
 - Voice uses browser speech recognition for dictation and hands-free turn-taking, plus speech synthesis for reading answers aloud. Browser/device support and microphone permission are required.
-- Image generation uses Gemini Nano Banana 2.1 through Puter.js. Users can choose 1K, 2K, or 4K output; 2K is the default. Actual usage charges depend on the selected resolution and Puter's current provider pricing; each user pays through their own Puter account.
+- Image generation offers two models through Puter.js: GPT Image 2.6 Flare (quality Low/Medium/High and 1K/2K resolution; a red warning appears for High because it can use many credits) and FLUX.1 Schnell (fixed 1024px, cheapest). Choices are remembered in this browser. Actual charges depend on Puter's current provider pricing.
 
 ## Local-first conversation sync
 - Chat turns are written immediately to the browser's IndexedDB store, so the conversation remains available locally without a database write for every message.

@@ -444,7 +444,7 @@ test('search also filters unsynced local chats, document OCR signs in first, str
   assert.ok(appJs.includes("await ensurePuter();toast('Extracting '"));
   assert.ok(appJs.includes('now-lastPaint>100'));
   assert.ok(appJs.includes('VOICE.misses<3'));
-  assert.ok(!(await readFile(new URL('../public/login.html', import.meta.url), 'utf8')).includes('GPT Image 2'));
+  assert.ok(!(await readFile(new URL('../public/login.html', import.meta.url), 'utf8')).includes('Nano Banana'));
 });
 
 test('Deep Research shows a clear message instead of failing when the Gemini video model is selected', () => {

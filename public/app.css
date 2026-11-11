@@ -144,7 +144,6 @@ button:active{transform:translateY(1px)}
  .m.assistant .b table{font-size:13px}
  .m.assistant .b pre{max-width:calc(100vw - 36px)}
  #top select#model{flex:0 1 auto}
- #top #imageQuality{max-width:62px!important}
  #comp .box{max-width:100%}
  #comp .toolrow{scrollbar-width:thin}
  #comp .toolrow button{min-height:34px}
@@ -162,3 +161,23 @@ button:active{transform:translateY(1px)}
  #go{min-width:64px}
 }
 @media(prefers-contrast:more){button,input,select,textarea,.box{border-width:2px}.m.assistant .b blockquote{border-left-width:5px}}
+
+/* Image options bar + broader responsiveness */
+#imgOpts{display:flex;flex-wrap:wrap;align-items:center;gap:8px 12px;padding:8px 16px;border-bottom:1px solid var(--bd);flex-shrink:0}
+#imgOpts label{display:flex;align-items:center;gap:6px;font-size:13px;color:var(--mut);min-width:0}
+#imgOpts select{width:auto;max-width:100%;min-width:0}
+#imgWarn{flex:1 1 100%;margin:0;padding:8px 12px;border-radius:10px;border:1px solid #ef4444;background:rgba(239,68,68,.14);color:#ef4444;font-size:13px;font-weight:600;line-height:1.4}
+:root[data-theme=light] #imgWarn{color:#b91c1c;background:#fee2e2}
+#who{max-width:30vw;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+#top{flex-wrap:wrap}
+img,video,canvas,iframe{max-width:100%}
+@media(max-width:760px){
+ #imgOpts{padding:8px 12px;gap:6px 10px}
+ #imgOpts label{flex:1 1 140px;justify-content:space-between}
+ #imgOpts select{flex:1 1 auto}
+ input,select,textarea{font-size:16px}
+}
+@media(max-width:560px){#top a[href="/"],#who{display:none}#imgOpts label{flex:1 1 100%}}
+@media(max-height:480px) and (orientation:landscape){#top{min-height:44px;padding-top:4px;padding-bottom:4px}#imgOpts{padding-top:4px;padding-bottom:4px}}
+@media(min-width:1600px){.box{max-width:900px}}
+@supports(height:100dvh){html,body{height:100dvh}}

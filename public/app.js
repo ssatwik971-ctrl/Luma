@@ -1,20 +1,16 @@
 
 const $=s=>document.querySelector(s);
-const MODELS={luna:{id:'openai/gpt-6-luna',name:'GPT-6 Luna'},pro:{id:'openai/gpt-6-luna-pro',name:'GPT-6 Luna Pro'},video:{id:'google/gemini-2.5-flash',name:'Gemini 2.5 Flash (video)'},image:{id:'gemini-nano-banana-2.1',name:'Gemini Nano Banana 2.1',img:true}};
+const MODELS={luna:{id:'openai/gpt-6-luna',name:'GPT-6 Luna'},pro:{id:'openai/gpt-6-luna-pro',name:'GPT-6 Luna Pro'},video:{id:'google/gemini-2.5-flash',name:'Gemini 2.5 Flash (video)'},image:{id:'gemini-nano-banana-2.1',name:'Image generation',img:true}};
+const FLUX_ID='@cf/black-forest-labs/flux-1-schnell',FLARE_ID='gpt-image-2.6-flare';
 const IMAGE_MODELS={
- 'gemini-nano-banana-2.1':{name:'Nano Banana 2.1',tiers:['1K','2K','4K'],cost:'high'},
- 'gemini-3.1-flash-lite-image':{name:'Gemini 3.1 Flash Lite Image (cheaper)',tiers:['1K'],cost:'low'},
- 'gemini-3.1-flash-image':{name:'Gemini 3.1 Flash Image',tiers:['512','1K','2K','4K'],cost:'mid'},
- '@cf/black-forest-labs/flux-1-schnell':{name:'FLUX.1 Schnell (cheapest, 1024px)',tiers:[],cost:'lowest'},
- 'seedream-5-0-lite-260128':{name:'Seedream 5.0 Lite',tiers:['2K','3K','4K'],cost:'low'},
- 'gpt-image-2.6-flare':{name:'GPT Image 2.6 Flare',tiers:['low','medium','high'],cost:'mid'},
- 'grok-imagine-image':{name:'Grok Imagine',tiers:['1k','2k'],cost:'mid'}
+ [FLARE_ID]:{name:'GPT Image 2.6 Flare',flare:true},
+ [FLUX_ID]:{name:'FLUX.1 Schnell (1024px, cheapest)',flare:false}
 };
-let IMG={id:(()=>{try{const v=localStorage.getItem('lumo-image-model');return IMAGE_MODELS[v]?v:'@cf/black-forest-labs/flux-1-schnell'}catch{return '@cf/black-forest-labs/flux-1-schnell'}})(),tier:null};
-function imgTiers(){return IMAGE_MODELS[IMG.id].tiers}
-function imgTier(){const t=imgTiers();return t.length?(t.includes(IMG.tier)?IMG.tier:(t.includes(S.imageQuality)?S.imageQuality:t[0])):null}
+const IMG_QUALITIES=['low','medium','high'],IMG_RES={'1K':1024,'2K':2048};
+let IMG=(()=>{const d={id:FLUX_ID,quality:'low',res:'1K'};try{const v=JSON.parse(localStorage.getItem('lumo-image-opts')||'{}');if(IMAGE_MODELS[v.id])d.id=v.id;if(IMG_QUALITIES.includes(v.quality))d.quality=v.quality;if(IMG_RES[v.res])d.res=v.res}catch{}return d})();
+function saveImg(){try{localStorage.setItem('lumo-image-opts',JSON.stringify(IMG))}catch{}}
 const VOICE={recognition:null,mode:false,finalTranscript:''};
-const S={user:null,convs:[],convCursor:null,convHasMore:false,listRequest:0,cur:null,msgs:[],mem:[],files:[],busy:false,stop:false,temporary:false,model:'luna',mode:'login',prev:'luna',imageQuality:'2K'};
+const S={user:null,convs:[],convCursor:null,convHasMore:false,listRequest:0,cur:null,msgs:[],mem:[],files:[],busy:false,stop:false,temporary:false,model:'luna',mode:'login',prev:'luna'};
 const LOCAL={db:null,dirty:new Set(),timer:null,maxTimer:null,syncing:false,blockSync:false};
 function localId(){return crypto.randomUUID()}
 function openDBNamed(name){return new Promise((resolve,reject)=>{const r=indexedDB.open(name,2);r.onupgradeneeded=()=>{const db=r.result,tx=r.transaction;const store=db.objectStoreNames.contains('conversations')?tx.objectStore('conversations'):db.createObjectStore('conversations',{keyPath:'id'});if(!store.indexNames.contains('pendingSync'))store.createIndex('pendingSync','pendingSync',{unique:false})};r.onsuccess=()=>resolve(r.result);r.onerror=()=>reject(r.error)})}
@@ -113,8 +109,15 @@ $('#lo').onclick=async()=>{
  LOCAL.blockSync=true;clearTimeout(LOCAL.timer);clearTimeout(LOCAL.maxTimer);
  try{await api('auth/logout','POST',{})}catch{}
  await removeLocalDB();location.replace('/login')};
-function syncImageControls(){const on=S.model==='image';const sel=$('#imageModel');if(sel&&!sel.options.length){for(const [id,m] of Object.entries(IMAGE_MODELS)){const o=document.createElement('option');o.value=id;o.textContent=m.name;sel.append(o)}}if(sel)sel.value=IMG.id;sel&&(sel.style.display=on?'inline-block':'none');const q=$('#imageQuality'),t=imgTiers();q.innerHTML='';for(const x of t){const o=document.createElement('option');o.value=x;o.textContent=x;q.append(o)}if(t.length)q.value=imgTier();q.style.display=on&&t.length?'inline-block':'none';$('#img').classList.toggle('on2',on)}
-async function boot(u){S.user=u;S.autoRoute=!!u.settings?.autoRoute;$('#autoRoute').classList.toggle('active',S.autoRoute);$('#who').textContent=u.email;const st=u.settings||{};if(st.theme)theme(st.theme);S.model=st.model==='dalle'?'image':(st.model||'luna');S.imageQuality=['1K','2K','4K'].includes(st.imageQuality)?st.imageQuality:'2K';$('#model').value=S.model;$('#imageQuality').value=S.imageQuality;syncImageControls();await openLocalDB();const local=await localDirtyAll();for(const c of local)LOCAL.dirty.add(c.id);await loadList();await loadMem();updateSyncStatus()}
+function syncImageControls(){
+ const on=S.model==='image',m=IMAGE_MODELS[IMG.id],sel=$('#imageModel');
+ if(!sel.options.length)for(const [id,x] of Object.entries(IMAGE_MODELS)){const o=document.createElement('option');o.value=id;o.textContent=x.name;sel.append(o)}
+ sel.value=IMG.id;$('#imageQuality').value=IMG.quality;$('#imageRes').value=IMG.res;
+ $('#imgOpts').style.display=on?'flex':'none';
+ for(const id of ['imgQualityWrap','imgResWrap'])$('#'+id).style.display=m.flare?'flex':'none';
+ $('#imgWarn').style.display=on&&m.flare&&IMG.quality==='high'?'block':'none';
+ $('#img').classList.toggle('on2',on)}
+async function boot(u){S.user=u;S.autoRoute=!!u.settings?.autoRoute;$('#autoRoute').classList.toggle('active',S.autoRoute);$('#who').textContent=u.email;const st=u.settings||{};if(st.theme)theme(st.theme);S.model=st.model==='dalle'?'image':(st.model||'luna');$('#model').value=S.model;syncImageControls();await openLocalDB();const local=await localDirtyAll();for(const c of local)LOCAL.dirty.add(c.id);await loadList();await loadMem();updateSyncStatus()}
 (async()=>{try{const{user}=await api('auth/me');if(!user){location.replace('/login');return}await boot(user)}catch(e){if(e.message!=='Signed out')toast(e.message)}})();
 // ---- conversations
 async function loadList(reset=true){const request=++S.listRequest,query=$('#q').value.trim();if(reset){S.convCursor=null;S.convHasMore=false;S.convQuery=query;S.convs=[]}try{const params=new URLSearchParams({q:query,limit:'50'});if(!reset&&S.convCursor)params.set('cursor',JSON.stringify(S.convCursor));const page=await api('conversations?'+params.toString());if(request!==S.listRequest)return;const conversations=page.conversations||[];S.convCursor=page.nextCursor||null;S.convHasMore=!!page.hasMore;const locals=await localDirtyAll();if(request!==S.listRequest)return;const merged=new Map(S.convs.map(c=>[c.id,c]));for(const c of conversations)merged.set(c.id,c);const ql=query.toLowerCase();for(const c of locals.filter(c=>!ql||String(c.title||'').toLowerCase().includes(ql)||(c.messages||[]).some(m=>String(m.content||'').toLowerCase().includes(ql))))if(LOCAL.dirty.has(c.id)||!merged.has(c.id))merged.set(c.id,{id:c.id,title:c.title,model:c.model,pinned:!!c.pinned,folder:c.folder||'',updated_at:c.updated_at,local:true});S.convs=[...merged.values()].sort((a,b)=>Number(b.pinned)-Number(a.pinned)||String(b.updated_at).localeCompare(String(a.updated_at)));const l=$('#list');l.innerHTML='';$('#loadMoreChats').style.display=S.convHasMore?'block':'none';$('#loadMoreChats').disabled=false;for(const c of S.convs){const d=document.createElement('div');d.className='ci'+(c.id===S.cur?' on':'');d.innerHTML='<span></span><button title="Pin">📌</button><button title="Rename">✎</button><button title="Folder">📁</button><button title="Delete">🗑</button>';d.firstChild.textContent=(c.folder?'📁 '+c.folder+' / ':'')+c.title+(c.local?' · local':'');const[b1,b2,bf,b3]=d.querySelectorAll('button');d.onclick=()=>openConv(c.id);b1.onclick=async e=>{e.stopPropagation();const lc=await localGet(c.id);if(lc){lc.pinned=!lc.pinned;await saveLocal(lc)}else await api('conversations/'+c.id,'PATCH',{pinned:!c.pinned});loadList()};b2.onclick=async e=>{e.stopPropagation();const t=prompt('Rename chat',c.title);if(t){const lc=await localGet(c.id);if(lc){lc.title=t;await saveLocal(lc)}else await api('conversations/'+c.id,'PATCH',{title:t});loadList()}};bf.onclick=async e=>{e.stopPropagation();const folder=prompt('Folder name (leave blank to remove folder)',c.folder||'');if(folder===null)return;const lc=await localGet(c.id);if(lc){lc.folder=folder.trim().slice(0,60);await saveLocal(lc)}else await api('conversations/'+c.id,'PATCH',{folder:folder.trim().slice(0,60)});await loadList()};b3.onclick=async e=>{e.stopPropagation();if(confirm('Delete this chat?')){LOCAL.blockSync=true;try{while(LOCAL.syncing)await new Promise(r=>setTimeout(r,50));try{await api('conversations/'+c.id,'DELETE')}catch(err){if(!(c.local&&err.status===404))throw err}await new Promise((resolve,reject)=>{const tx=LOCAL.db.transaction('conversations','readwrite');tx.objectStore('conversations').delete(c.id);tx.oncomplete=resolve;tx.onerror=()=>reject(tx.error)});LOCAL.dirty.delete(c.id);if(S.cur===c.id)newChat();await loadList()}catch(err){toast('Could not delete chat: '+err.message)}finally{LOCAL.blockSync=false;if(LOCAL.dirty.size)scheduleSync()}}};l.append(d)}}catch(e){if(request===S.listRequest)toast('Could not load conversations: '+e.message)}}
@@ -159,8 +162,9 @@ function routeModel(text){
 }
 
 $('#model').onchange=e=>{S.model=e.target.value;if(S.model!=='image')S.prev=S.model;syncImageControls();api('settings','PUT',{model:S.model}).catch(()=>{})};
-$('#imageQuality').onchange=e=>{IMG.tier=e.target.value;if(['1K','2K','4K'].includes(IMG.tier)){S.imageQuality=IMG.tier;api('settings','PUT',{imageQuality:S.imageQuality}).catch(()=>{})}};
-$('#imageModel').onchange=e=>{IMG.id=e.target.value;IMG.tier=null;try{localStorage.setItem('lumo-image-model',IMG.id)}catch{}syncImageControls()};
+$('#imageModel').onchange=e=>{IMG.id=e.target.value;saveImg();syncImageControls()};
+$('#imageQuality').onchange=e=>{IMG.quality=e.target.value;saveImg();syncImageControls()};
+$('#imageRes').onchange=e=>{IMG.res=e.target.value;saveImg();syncImageControls()};
 $('#img').onclick=()=>{if(S.model==='image'){S.model=S.prev||'luna';}else{S.prev=S.model;S.model='image'}$('#model').value=S.model;syncImageControls();api('settings','PUT',{model:S.model}).catch(()=>{})};
 $('#att').onclick=()=>$('#file').click();
 $('#file').onchange=async e=>{for(const f of e.target.files){try{
@@ -194,7 +198,7 @@ async function gen(){
  busy(true);S.stop=false;const M=MODELS[S.model],w=$('#mw'),d=document.createElement('div');d.className='m assistant';d.innerHTML='<div class="b" style="color:var(--mut)">Thinking…</div>';w.append(d);$('#msgs').scrollTop=1e9;
  const last=S.msgs[S.msgs.length-1];let acc='',atts=[];
  try{
-  if(M.img){const tier=imgTier(),imo={model:IMG.id};if(tier){if(/^(gemini|seedream|dola-seedream)/.test(IMG.id)||IMG.id.startsWith('grok'))imo[IMG.id.startsWith('grok')?'resolution':'quality']=tier;else imo.quality=tier}const im=await puter.ai.txt2img(last.content,imo);const u=await toDataUrl(im.src);acc='Generated with '+IMAGE_MODELS[IMG.id].name+(tier?' · '+tier:'')+'.';
+  if(M.img){const fl=IMAGE_MODELS[IMG.id].flare,imo={model:IMG.id};if(fl){imo.quality=IMG.quality;imo.width=imo.height=IMG_RES[IMG.res]}const im=await puter.ai.txt2img(last.content,imo);const u=await toDataUrl(im.src);acc='Generated with '+IMAGE_MODELS[IMG.id].name+(fl?' · '+IMG.quality+' quality · '+IMG.res:'')+'.';
    const mime=(/^data:([^;]+);/.exec(u)||[])[1]||'image/png',ext=mime.split('/')[1]||'png';let cloud=null;
    if(!S.temporary){try{const up=await shrinkImage(u);const imageId=localId();await api('images/'+imageId,'PUT',{dataUrl:up.dataUrl});cloud={imageId,size:up.dataUrl.length,type:up.type}}catch(e){toast('Image kept on this device only: '+errText(e))}}
    atts=[cloud?{name:'image.'+ext,type:cloud.type,size:cloud.size,gen:true,imageId:cloud.imageId,dataUrl:u}:{name:'image.'+ext,type:mime,size:0,dataUrl:u}]}
