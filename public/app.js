@@ -11,7 +11,7 @@ let IMG=(()=>{const d={id:FLUX_ID,quality:'low',res:'1K'};try{const v=JSON.parse
 function saveImg(){try{localStorage.setItem('lumo-image-opts',JSON.stringify(IMG))}catch{}}
 const VOICE={recognition:null,mode:false,finalTranscript:''};
 const S={user:null,convs:[],convCursor:null,convHasMore:false,listRequest:0,cur:null,msgs:[],mem:[],files:[],busy:false,stop:false,temporary:false,model:'luna',mode:'login',prev:'luna'};
-const LOCAL={db:null,dirty:new Set(),timer:null,maxTimer:null,syncing:false,blockSync:false};
+const LOCAL={db:null,dirty:new Set(),retry:null,again:false,syncing:false,blockSync:false};
 function localId(){return crypto.randomUUID()}
 function openDBNamed(name){return new Promise((resolve,reject)=>{const r=indexedDB.open(name,2);r.onupgradeneeded=()=>{const db=r.result,tx=r.transaction;const store=db.objectStoreNames.contains('conversations')?tx.objectStore('conversations'):db.createObjectStore('conversations',{keyPath:'id'});if(!store.indexNames.contains('pendingSync'))store.createIndex('pendingSync','pendingSync',{unique:false})};r.onsuccess=()=>resolve(r.result);r.onerror=()=>reject(r.error)})}
 // Local chats are stored per account so a second user on the same browser never sees them.
@@ -30,69 +30,36 @@ function localGet(id){if(id==null)return Promise.resolve(null);return new Promis
 function localDirtyAll(){return new Promise(resolve=>{try{const r=LOCAL.db.transaction('conversations').objectStore('conversations').getAll();r.onsuccess=()=>resolve((r.result||[]).filter(c=>c&&c.pendingSync===true));r.onerror=()=>{console.warn('Lumo local read failed',r.error);resolve([])}}catch(e){console.warn('Lumo local read failed',e);resolve([])}})}
 function saveLocal(c,dirty=true){return new Promise((resolve,reject)=>{c.updated_at=new Date().toISOString();if(dirty){c._rev=(Number(c._rev)||0)+1;c.pendingSync=true}else if(typeof c.pendingSync!=='boolean')c.pendingSync=false;const tx=LOCAL.db.transaction('conversations','readwrite');tx.objectStore('conversations').put(c);tx.oncomplete=()=>{if(dirty){LOCAL.dirty.add(c.id);scheduleSync()}updateSyncStatus();resolve()};tx.onerror=()=>reject(tx.error)})}
 function updateSyncStatus(t){const e=$('#syncStatus');if(e)e.textContent=t||(LOCAL.syncing?'Syncing…':LOCAL.dirty.size?'Saved locally · waiting to sync':'All changes synced')}
-function scheduleSync(){clearTimeout(LOCAL.timer);LOCAL.timer=setTimeout(flushSync,5000);if(!LOCAL.maxTimer)LOCAL.maxTimer=setTimeout(flushSync,30000);updateSyncStatus('Saved locally · waiting to sync')}
-// Sync is additive and chunked. Each request carries <=50 messages per conversation, <=400 messages and <=900 KB (JSON length bounds the server 1M-character limit and the 6 MB body limit),
-// so long chats never exceed server limits. Messages removed locally (edit/regenerate) are sent as explicit `removed` ids
-// (known server ids minus current ids), so a stale device can never delete messages another device added.
-const SYNC_LIMITS={normal:{bytes:900000,msgs:400,convs:10,chunkBytes:600000},keepalive:{bytes:55000,msgs:50,convs:5,chunkBytes:40000}};
+// No batching and no delay: every change is written to the database as soon as it is saved locally.
+// Only that conversation's not-yet-synced messages are sent (additive; removed ids only when edit/regenerate deleted them).
+// If a request fails, the chat stays marked unsynced and is retried automatically (8 s, and when the browser comes back online).
+function scheduleSync(){flushSync()}
 function syncMessage(m){return{id:m.id,role:m.role,content:m.content,model:m.model||null,attachments:(m.attachments||[]).map(({_imgs,dataUrl,gen,imageId,...a})=>imageId?{...a,gen:true,imageId}:a),created_at:m.created_at||new Date().toISOString()}}
-function buildSyncRounds(records,lim){
- const rounds=[];
- for(const c of records){
-  const synced=new Set(c.syncedIds||[]),current=new Set((c.messages||[]).map(m=>m.id));
-  const removed=[...synced].filter(id=>!current.has(id)).slice(0,500);
-  const meta={id:c.id,_rev:Number(c._rev)||0,title:c.title||'New chat',model:c.model||'luna',pinned:!!c.pinned,folder:c.folder||'',updated_at:c.updated_at};
-  const chunks=[];let cur=[],curBytes=0;
-  for(const m of (c.messages||[]).filter(m=>!synced.has(m.id)).map(syncMessage)){
-   const n=JSON.stringify(m).length;
-   if(cur.length&&(cur.length>=50||curBytes+n>lim.chunkBytes)){chunks.push(cur);cur=[];curBytes=0}
-   cur.push(m);curBytes+=n;
-  }
-  if(cur.length||!chunks.length)chunks.push(cur);
-  chunks.forEach((messages,r)=>{(rounds[r]??=[]).push({...meta,messages,removed:r===0?removed:[],_ids:messages.map(m=>m.id)})});
- }
- // Pack each round into requests within the count/size budget; one conversation appears at most once per request.
- const requests=[];
- for(const round of rounds){let batch=[],msgs=0,bytes=0;
-  for(const item of round){const n=JSON.stringify(item).length;
-   if(batch.length&&(batch.length>=lim.convs||msgs+item.messages.length>lim.msgs||bytes+n>lim.bytes)){requests.push(batch);batch=[];msgs=0;bytes=0}
-   batch.push(item);msgs+=item.messages.length;bytes+=n}
-  if(batch.length)requests.push(batch)}
- return requests;
-}
-async function flushSync(opts={}){
- if(LOCAL.blockSync||LOCAL.syncing||!LOCAL.dirty.size||!S.user)return;
- const keepalive=!!opts.keepalive,lim=keepalive?SYNC_LIMITS.keepalive:SYNC_LIMITS.normal;
- LOCAL.syncing=true;LOCAL.lastFlush=Date.now();clearTimeout(LOCAL.timer);clearTimeout(LOCAL.maxTimer);LOCAL.timer=LOCAL.maxTimer=null;updateSyncStatus('Syncing…');
+async function flushSync(){
+ if(LOCAL.blockSync||!S.user||!LOCAL.dirty.size)return;
+ if(LOCAL.syncing){LOCAL.again=true;return}
+ LOCAL.syncing=true;LOCAL.again=false;clearTimeout(LOCAL.retry);updateSyncStatus('Syncing…');
  try{
-  const ids=[...LOCAL.dirty],records=[];
-  for(const id of ids){const c=await localGet(id);if(c)records.push(c);else LOCAL.dirty.delete(id)}
-  const requests=buildSyncRounds(records,lim),sentIds=new Map();// id -> {add:Set,del:Set}
-  // A page that is closing can only deliver one small request; the rest stays dirty and syncs next visit.
-  for(const batch of keepalive?requests.slice(0,1):requests){
-   await api('sync','POST',{conversations:batch.map(({_ids,...item})=>item)},{keepalive});
-   for(const item of batch){const e=sentIds.get(item.id)||{add:new Set(),del:new Set()};item._ids.forEach(x=>e.add.add(x));item.removed.forEach(x=>e.del.add(x));sentIds.set(item.id,e)}
-  }
-  if(keepalive&&requests.length>1)return;
-  for(const rec of records){
-   const saved=await localGet(rec.id);
-   if(!saved){LOCAL.dirty.delete(rec.id);continue}
-   const known=new Set(saved.syncedIds||[]),e=sentIds.get(rec.id);
-   if(e){e.del.forEach(x=>known.delete(x));e.add.forEach(x=>known.add(x))}
-   saved.syncedIds=[...known];
-   const unchanged=(Number(saved._rev)||0)===(Number(rec._rev)||0);
-   if(unchanged)saved.pendingSync=false;
+  for(const id of [...LOCAL.dirty]){
+   const rec=await localGet(id);if(!rec){LOCAL.dirty.delete(id);continue}
+   const synced=new Set(rec.syncedIds||[]),current=new Set((rec.messages||[]).map(m=>m.id));
+   const removed=[...synced].filter(x=>!current.has(x)).slice(0,500);
+   const fresh=(rec.messages||[]).filter(m=>!synced.has(m.id));
+   const meta={id:rec.id,_rev:Number(rec._rev)||0,title:rec.title||'New chat',model:rec.model||'luna',pinned:!!rec.pinned,folder:rec.folder||'',updated_at:rec.updated_at};
+   const parts=[];for(let i=0;i<fresh.length;i+=50)parts.push(fresh.slice(i,i+50));if(!parts.length)parts.push([]);// server limit: 100 messages per request
+   const sent=[];
+   for(let i=0;i<parts.length;i++){await api('sync','POST',{conversations:[{...meta,messages:parts[i].map(syncMessage),removed:i===0?removed:[]}]});parts[i].forEach(m=>sent.push(m.id))}
+   const saved=await localGet(id);if(!saved){LOCAL.dirty.delete(id);continue}
+   const known=new Set(saved.syncedIds||[]);removed.forEach(x=>known.delete(x));sent.forEach(x=>known.add(x));saved.syncedIds=[...known];
+   const unchanged=(Number(saved._rev)||0)===(Number(rec._rev)||0);if(unchanged)saved.pendingSync=false;
    await new Promise((resolve,reject)=>{const tx=LOCAL.db.transaction('conversations','readwrite');tx.objectStore('conversations').put(saved);tx.oncomplete=resolve;tx.onerror=()=>reject(tx.error)});
-   if(unchanged)LOCAL.dirty.delete(rec.id);else LOCAL.dirty.add(rec.id);
+   if(unchanged)LOCAL.dirty.delete(id);else LOCAL.again=true;
   }
-  updateSyncStatus();if(!keepalive)await loadList();
- }catch(e){updateSyncStatus('Sync pending · retrying');if(!keepalive)scheduleSync();console.warn('Lumo sync deferred',e)}
- finally{LOCAL.syncing=false;if(LOCAL.dirty.size&&!LOCAL.blockSync&&!keepalive)scheduleSync()}
+  updateSyncStatus();
+ }catch(e){updateSyncStatus('Sync failed · retrying');LOCAL.retry=setTimeout(flushSync,8000);console.warn('Lumo sync failed, will retry',e);LOCAL.again=false}
+ finally{LOCAL.syncing=false;if(LOCAL.again&&!LOCAL.blockSync){LOCAL.again=false;flushSync()}}
 }
-window.addEventListener('online',()=>flushSync());// Flush once when the page is hidden/closed (keepalive lets the request outlive the page). Throttled so tab switching
-// does not wake the database repeatedly.
-function flushOnHide(){if(LOCAL.dirty.size&&Date.now()-(LOCAL.lastFlush||0)>5000)flushSync({keepalive:true})}
-window.addEventListener('pagehide',flushOnHide);document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='hidden')flushOnHide()});
+window.addEventListener('online',()=>flushSync());
 async function api(p,m='GET',b,opts={}){const r=await fetch('/api/'+p,{method:m,keepalive:!!opts.keepalive,headers:{'content-type':'application/json','x-requested-with':'app'},body:b?JSON.stringify(b):undefined});const j=await r.json().catch(()=>({}));if(r.status===401&&!p.startsWith('auth/')){location.replace('/login');throw new Error('Signed out')}if(!r.ok){const e=new Error(j.error||('HTTP '+r.status));e.status=r.status;throw e}return j}
 function toast(t){const e=$('#toast');e.textContent=t;e.style.display='block';clearTimeout(toast.t);toast.t=setTimeout(()=>e.style.display='none',4500)}
 const errText=e=>{const m=e?.error?.message||e?.message||e?.msg||(typeof e==='string'?e:'');const c=e?.error?.code||e?.code;if(m)return c&&!String(m).includes(c)?m+' ('+c+')':m;try{return JSON.stringify(e)||String(e)}catch{return String(e)}};
@@ -106,7 +73,7 @@ theme(localStorage.getItem('theme')||'dark');
 $('#lo').onclick=async()=>{
  try{while(LOCAL.syncing)await new Promise(r=>setTimeout(r,50));await flushSync()}catch{}
  if(LOCAL.dirty.size&&!confirm('Some chats have not reached the cloud yet. Logging out removes them from this device, so they would be lost. Log out anyway?'))return;
- LOCAL.blockSync=true;clearTimeout(LOCAL.timer);clearTimeout(LOCAL.maxTimer);
+ LOCAL.blockSync=true;clearTimeout(LOCAL.retry);
  try{await api('auth/logout','POST',{})}catch{}
  await removeLocalDB();location.replace('/login')};
 function syncImageControls(){
@@ -336,7 +303,7 @@ async function loadUsage(){
  }catch(e){box.textContent='Could not load Puter usage: '+errText(e)}
 }
 $('#ex').onclick=async()=>{try{const r=await fetch('/api/export',{headers:{'x-requested-with':'app'}});if(!r.ok)throw Error('Export failed');const u=URL.createObjectURL(await r.blob()),a=document.createElement('a');a.href=u;a.download='lumo-export.json';a.click();URL.revokeObjectURL(u)}catch(e){toast(e.message)}};
-$('#dd').onclick=async()=>{if(!confirm('Permanently delete ALL your chats, memories and settings? This cannot be undone.'))return;LOCAL.blockSync=true;try{while(LOCAL.syncing)await new Promise(r=>setTimeout(r,50));await api('data','DELETE');clearTimeout(LOCAL.timer);clearTimeout(LOCAL.maxTimer);LOCAL.timer=LOCAL.maxTimer=null;LOCAL.dirty.clear();await new Promise((resolve,reject)=>{const tx=LOCAL.db.transaction('conversations','readwrite');tx.objectStore('conversations').clear();tx.oncomplete=resolve;tx.onerror=()=>reject(tx.error)});S.cur=null;S.msgs=[];S.mem=[];render();await Promise.all([loadList(),loadMem(),loadStats()]);toast('Your data was deleted from this device and cloud.')}catch(e){toast('Could not delete all data: '+e.message)}finally{LOCAL.blockSync=false}};
+$('#dd').onclick=async()=>{if(!confirm('Permanently delete ALL your chats, memories and settings? This cannot be undone.'))return;LOCAL.blockSync=true;try{while(LOCAL.syncing)await new Promise(r=>setTimeout(r,50));await api('data','DELETE');clearTimeout(LOCAL.retry);LOCAL.dirty.clear();await new Promise((resolve,reject)=>{const tx=LOCAL.db.transaction('conversations','readwrite');tx.objectStore('conversations').clear();tx.oncomplete=resolve;tx.onerror=()=>reject(tx.error)});S.cur=null;S.msgs=[];S.mem=[];render();await Promise.all([loadList(),loadMem(),loadStats()]);toast('Your data was deleted from this device and cloud.')}catch(e){toast('Could not delete all data: '+e.message)}finally{LOCAL.blockSync=false}};
 $('#mem').onclick=()=>{loadStats();loadUsage();const s=S.user.settings||{};$('#th').value=document.documentElement.dataset.theme;$('#ins').value=s.instructions||'';$('#am2').checked=!!s.autoMemory;$('#useMemories').checked=s.useMemories!==false;$('#dlg').showModal()};
 $('#ma').onclick=async()=>{const t=$('#mn').value.trim();if(!t)return;try{await api('memories','POST',{text:t});$('#mn').value='';loadMem()}catch(e){toast(e.message)}};
 $('#mc').onclick=async()=>{if(confirm('Delete ALL memories?')){await api('memories','DELETE');loadMem()}};

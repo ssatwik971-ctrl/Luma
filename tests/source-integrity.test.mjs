@@ -27,12 +27,6 @@ test('message sync has a matching unique conflict target', () => {
   assert.ok(api.includes('on conflict(id,user_id) do nothing'));
 });
 
-test('local sync only clears dirty state when the uploaded revision is unchanged', () => {
-  assert.ok(app.includes('(Number(saved._rev)||0)===(Number(rec._rev)||0)'));
-  assert.ok(app.includes('if(unchanged)saved.pendingSync=false'));
-  assert.ok(app.includes('if(unchanged)LOCAL.dirty.delete(rec.id);else LOCAL.dirty.add(rec.id)'));
-});
-
 test('delete-all blocks sync and clears the local conversation store after server success', () => {
   assert.ok(app.includes('LOCAL.blockSync=true;try{while(LOCAL.syncing)'));
   assert.ok(app.includes("objectStore('conversations').clear()"));
@@ -219,41 +213,6 @@ test('sync is additive: only explicitly removed message ids are deleted, never "
   assert.ok(api.includes('m.id = any(x.removed)'));
   assert.ok(!api.includes('not (m.id = any(x.keep))'));
   assert.ok(api.includes("A conversation can appear only once per sync batch"));
-});
-
-test('client sync chunks long chats and batches so every request fits the server limits', async () => {
-  const start = appJs.indexOf('const SYNC_LIMITS'), end = appJs.indexOf('async function flushSync');
-  const ctx = {}; vm.createContext(ctx);
-  vm.runInContext(appJs.slice(start, end) + ';this.SYNC_LIMITS=SYNC_LIMITS;this.buildSyncRounds=buildSyncRounds', ctx);
-  const uuid = () => crypto.randomUUID();
-  const mk = (n, len, synced = 0) => { const messages = Array.from({ length: n }, (_, i) => ({ id: uuid(), role: i % 2 ? 'assistant' : 'user', content: 'x'.repeat(len), attachments: [] })); return { id: uuid(), messages, syncedIds: messages.slice(0, synced).map(m => m.id), title: 't', _rev: 1, updated_at: new Date().toISOString() }; };
-  const check = batch => { let mc = 0, chars = 0; const seen = new Set(); assert.ok(batch.length >= 1 && batch.length <= 50);
-    for (const c of batch) { assert.ok(!seen.has(c.id)); seen.add(c.id); assert.ok(c.messages.length <= 100); for (const m of c.messages) { mc++; chars += m.content.length; } }
-    assert.ok(mc <= 500 && chars <= 1000000 && JSON.stringify({ conversations: batch }).length < 6e6); };
-  const cases = [[mk(250, 2000)], Array.from({ length: 10 }, () => mk(60, 2000)), Array.from({ length: 25 }, () => mk(90, 5000))];
-  for (const recs of cases) {
-    const reqs = ctx.buildSyncRounds(recs, ctx.SYNC_LIMITS.normal); reqs.forEach(check);
-    const sent = new Map(); reqs.flat().forEach(i => sent.set(i.id, (sent.get(i.id) || 0) + i.messages.length));
-    for (const r of recs) assert.equal(sent.get(r.id), r.messages.length);
-  }
-});
-
-test('client reports locally removed messages explicitly and never re-sends already synced ones', () => {
-  const ctx = {}; vm.createContext(ctx);
-  vm.runInContext(appJs.slice(appJs.indexOf('const SYNC_LIMITS'), appJs.indexOf('async function flushSync')) + ';this.SYNC_LIMITS=SYNC_LIMITS;this.buildSyncRounds=buildSyncRounds', ctx);
-  const ids = Array.from({ length: 4 }, () => crypto.randomUUID()), ghost = crypto.randomUUID();
-  const rec = { id: crypto.randomUUID(), title: 't', _rev: 1, updated_at: new Date().toISOString(), syncedIds: [ids[0], ids[1], ghost], messages: ids.map((id, i) => ({ id, role: i % 2 ? 'assistant' : 'user', content: 'c' })) };
-  const [req] = ctx.buildSyncRounds([rec], ctx.SYNC_LIMITS.normal), item = req[0];
-  assert.deepEqual(JSON.parse(JSON.stringify(item.removed)), [ghost]);
-  assert.deepEqual(JSON.parse(JSON.stringify(item.messages.map(m => m.id))), [ids[2], ids[3]]);
-});
-
-test('closing or hiding the page flushes pending sync once with keepalive, throttled to protect database wake-ups', () => {
-  assert.ok(appJs.includes("keepalive:!!opts.keepalive"));
-  assert.ok(appJs.includes("flushSync({keepalive:true})"));
-  assert.ok(appJs.includes("Date.now()-(LOCAL.lastFlush||0)>5000"));
-  assert.ok(appJs.includes("document.addEventListener('visibilitychange'"));
-  assert.ok(appJs.includes('LOCAL.timer=setTimeout(flushSync,5000)'));
 });
 
 test('Phase 5 export groups messages in one pass rather than filtering per conversation', () => {
@@ -450,4 +409,32 @@ test('search also filters unsynced local chats, document OCR signs in first, str
 test('Deep Research shows a clear message instead of failing when the Gemini video model is selected', () => {
   assert.ok(appJs.includes("if(S.model==='video')throw Error('Deep Research needs GPT-6 Luna or GPT-6 Luna Pro"));
   assert.ok(appJs.includes('Deep Research is on, but it needs GPT-6 Luna or Luna Pro'));
+});
+
+test('messages are sent to the database immediately: no timers, no batching, no keepalive flush', () => {
+  assert.ok(appJs.includes('function scheduleSync(){flushSync()}'));
+  for (const gone of ['SYNC_LIMITS', 'buildSyncRounds', 'LOCAL.maxTimer', 'LOCAL.timer', 'flushOnHide', 'keepalive:true']) assert.ok(!appJs.includes(gone), gone);
+  assert.ok(appJs.includes('(Number(saved._rev)||0)===(Number(rec._rev)||0)'));
+  assert.ok(appJs.includes('if(unchanged)LOCAL.dirty.delete(id)'));
+});
+
+test('flushSync sends only unsynced messages plus explicit removals, one conversation per request, and retries on failure', async () => {
+  const start = appJs.indexOf('function scheduleSync'), end = appJs.indexOf('async function api(');
+  const calls = []; let fail = false; const store = new Map(); const timers = [];
+  const ctx = { LOCAL: { dirty: new Set(), syncing: false, blockSync: false }, S: { user: { id: 'u' } }, window: { addEventListener() {} }, console: { warn() {} }, setTimeout: (f, ms) => { timers.push(ms); return 1; }, clearTimeout() {}, updateSyncStatus() {},
+    localGet: async id => store.get(id) || null, api: async (path, m, body) => { if (fail) throw new Error('down'); calls.push(body.conversations); return { ok: true }; } };
+  ctx.LOCAL.db = { transaction: () => { const tx = { objectStore: () => ({ put: c => { store.set(c.id, c); } }) }; setTimeout; Promise.resolve().then(() => tx.oncomplete && tx.oncomplete()); return tx; } };
+  vm.createContext(ctx); vm.runInContext(appJs.slice(start, end) + ';this.flushSync=flushSync', ctx);
+  const ids = Array.from({ length: 120 }, () => crypto.randomUUID()), ghost = crypto.randomUUID(), cid = crypto.randomUUID();
+  store.set(cid, { id: cid, title: 't', _rev: 1, pendingSync: true, syncedIds: [ids[0], ghost], messages: ids.map((id, i) => ({ id, role: i % 2 ? 'assistant' : 'user', content: 'c' })) });
+  ctx.LOCAL.dirty.add(cid);
+  await ctx.flushSync();
+  assert.equal(calls.length, 3);
+  assert.ok(calls.every(c => c.length === 1 && c[0].messages.length <= 50));
+  assert.deepEqual(JSON.parse(JSON.stringify(calls[0][0].removed)), [ghost]);
+  assert.equal(calls.reduce((n, c) => n + c[0].messages.length, 0), 119);
+  assert.equal(ctx.LOCAL.dirty.size, 0); assert.equal(store.get(cid).pendingSync, false);
+  fail = true; store.get(cid).messages.push({ id: crypto.randomUUID(), role: 'user', content: 'new' }); store.get(cid)._rev = 2; store.get(cid).pendingSync = true; ctx.LOCAL.dirty.add(cid);
+  await ctx.flushSync();
+  assert.ok(ctx.LOCAL.dirty.has(cid)); assert.deepEqual(timers, [8000]);
 });

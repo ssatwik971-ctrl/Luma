@@ -44,7 +44,7 @@
 
 ## Local-first conversation sync
 - Chat turns are written immediately to the browser's IndexedDB store, so the conversation remains available locally without a database write for every message.
-- Pending conversations are batch-synced after five minutes of inactivity, with a ten-minute maximum wait while the page remains active.
+- Messages are written to the database immediately after they are saved locally (no batching or delay). Only the changed conversation's unsynced messages are sent; if a request fails, the chat stays marked unsynced and is retried after 8 seconds and when the browser comes back online.
 - The batch endpoint validates payload sizes and uses stable UUIDs with conflict-safe inserts, making retries idempotent.
 - Failed syncs remain queued locally and retry later; opening the app or reconnecting to the internet resumes synchronization. A page-close sync is attempted, but browsers may terminate it, so the persistent queue is the recovery mechanism.
 - The chat header reports whether changes are saved locally, syncing, or synced. AI requests still run immediately through Puter; only database persistence is deferred.
@@ -123,9 +123,9 @@ Phase 2 features are implemented on the development branch. Browser and live-ser
 - Source-integrity tests cover the modular assets, per-type attachment ceilings, local concept-aware memory retrieval and voice transcript handling.
 
 ## Sync data safety · November 2026
-- Cloud sync is additive and chunked: long chats and large batches are split into requests that fit the server limits (50 messages per chat per request, 400 per request, about 900 KB), so they no longer fail permanently.
+- Cloud sync is additive: one request per changed conversation, split into 50-message requests so it fits the server limits.
 - A sync never deletes messages just because they are missing from the request. Only message ids the browser explicitly reports as removed (edit or regenerate) are deleted, so a stale device cannot erase messages added on another device.
-- Sync stays batched (5–10 minutes) to limit database wake-ups. One extra flush runs when the page is hidden or closed (`keepalive`, at most once per minute, only if changes are pending).
+- Sync is immediate (previously batched every 5–10 minutes with a page-hide flush; that batching system was removed).
 - Chats created before this change have no recorded server message list; edits made to those before their next sync will not delete the old server copies of removed messages.
 
 ## Privacy, Artifact Studio and temporary chats · November 2026
@@ -145,7 +145,7 @@ Phase 2 features are implemented on the development branch. Browser and live-ser
 
 ## Generated images in the cloud · November 2026
 - Generated images are now saved to **Netlify Blobs** (store `lumo-images`, key `<user id>/<image id>`), not the database, so they do not add database load or wake-ups. The chat message stores only the image id; the image loads from `/api/images/:id` (login required, only your own images).
-- Images are uploaded when they are generated (not in the 5–10 minute sync batch). The cloud copy is at most about 3 MB (large images are re-encoded to WebP); the full-quality original stays on the device that created it, with a Download button.
+- Images are uploaded when they are generated (separately from the message sync). The cloud copy is at most about 3 MB (large images are re-encoded to WebP); the full-quality original stays on the device that created it, with a Download button.
 - Limits and cleanup: 300 images per account. Images are deleted when their chat, message (edit/regenerate) or all data is deleted. Temporary chats never upload.
 - If Blobs is unavailable the image stays on that device and a notice says so. Chats created before this change keep their old device-only images.
 - New dependency `@netlify/blobs`; run `npm install` and commit the lockfile to pin versions. No API key is needed on Netlify.
