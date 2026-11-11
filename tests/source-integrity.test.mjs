@@ -93,7 +93,7 @@ test('audio transcription and explicit video model selection use supported Puter
   assert.ok(app.includes("video:{id:'google/gemini-2.5-flash'"));
   assert.ok(app.includes("S.model!=='video'"));
   assert.ok(app.includes("No automatic model switch is made."));
-  assert.ok(app.includes("puter.ai.chat(prompt,last._video,{model:M.id,stream:true})"));
+  assert.ok(app.includes("puterChat(prompt,last._video,{model:M.id,stream:true})"));
   assert.ok(app.includes("if(!S.autoRoute||S.model==='image'||S.model==='video')"));
 });
 
@@ -251,9 +251,9 @@ test('client reports locally removed messages explicitly and never re-sends alre
 test('closing or hiding the page flushes pending sync once with keepalive, throttled to protect database wake-ups', () => {
   assert.ok(appJs.includes("keepalive:!!opts.keepalive"));
   assert.ok(appJs.includes("flushSync({keepalive:true})"));
-  assert.ok(appJs.includes("Date.now()-(LOCAL.lastFlush||0)>60000"));
+  assert.ok(appJs.includes("Date.now()-(LOCAL.lastFlush||0)>5000"));
   assert.ok(appJs.includes("document.addEventListener('visibilitychange'"));
-  assert.ok(appJs.includes('LOCAL.timer=setTimeout(flushSync,300000)'));
+  assert.ok(appJs.includes('LOCAL.timer=setTimeout(flushSync,5000)'));
 });
 
 test('Phase 5 export groups messages in one pass rather than filtering per conversation', () => {
@@ -283,7 +283,7 @@ test('Phase 5 IndexedDB migration indexes pending local changes', () => {
   assert.ok(app.includes("createIndex('pendingSync','pendingSync'"));
   assert.ok(app.includes("function localDirtyAll()"));
   assert.ok(!app.includes('function localAll()'));
-  assert.ok(app.includes("index('pendingSync').getAll(true)"));
+  assert.ok(app.includes("getAll();r.onsuccess=()=>resolve((r.result||[]).filter(c=>c&&c.pendingSync===true))"));
 });
 
 test('Phase 5 strips binary image data from cloud sync and restores generated images locally', () => {
